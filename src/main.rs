@@ -1,3 +1,6 @@
+mod cli;
+mod code;
+
 fn main() {
-    println!("Hello, world!");
+    cli::init();
 }

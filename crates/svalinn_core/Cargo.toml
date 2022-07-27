@@ -1,10 +1,8 @@
 [package]
-name = "svalinn"
+name = "svalinn_core"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-svalinn_core = { "path" = "./crates/svalinn_core" }
-argh = "0.1.8"
