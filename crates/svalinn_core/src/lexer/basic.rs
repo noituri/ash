@@ -1,6 +1,8 @@
-use super::token::Token;
-use crate::lexer::token::TokenTree;
 use chumsky::prelude::*;
+
+use crate::lexer::token::TokenTree;
+
+use super::token::Token;
 
 pub(super) fn basic_lexer() -> impl Parser<char, TokenTree, Error = Simple<char>> {
     let arrow = just("->").to(Token::Arrow.to_tree());

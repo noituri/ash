@@ -1,5 +1,6 @@
-use crate::lexer::token::{Token, TokenTree};
 use chumsky::prelude::*;
+
+use crate::lexer::token::{Token, TokenTree};
 
 pub(super) fn keyword_lexer() -> impl Parser<char, TokenTree, Error = Simple<char>> {
     text::ident().map(|ident: String| {

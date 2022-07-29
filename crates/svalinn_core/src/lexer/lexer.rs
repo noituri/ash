@@ -3,9 +3,9 @@ use crate::lexer::indent::indentation_lexer;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
 use crate::lexer::string::string_lexer;
-use crate::lexer::token::{Delim, Token, TokenTree};
-use crate::lexer::{Span, SpanTokenTree};
-use chumsky::{prelude::*, text::Character};
+use crate::lexer::token::{Delim, TokenTree};
+use crate::lexer::{SpanTokenTree};
+use chumsky::prelude::*;
 
 pub type LexResult<T = ()> = Result<T, Vec<Simple<char>>>;
 

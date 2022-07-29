@@ -1,7 +1,7 @@
 use crate::common::Source;
 use crate::lexer::Lexer;
 
-pub fn build(mut source: Source) {
+pub fn build(source: Source) {
     let lexer = Lexer::new();
     match lexer.scan(&source.to_string()) {
         Ok(tts) => println!("{:#?}", tts),

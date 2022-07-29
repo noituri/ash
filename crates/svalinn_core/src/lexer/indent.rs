@@ -1,6 +1,6 @@
-use crate::lexer::token::{Token, TokenTree};
-use crate::lexer::SpanTokenTree;
 use chumsky::{prelude::*, text::Character};
+
+use crate::lexer::SpanTokenTree;
 
 pub(super) fn indentation_lexer<'a, T, F>(
     token: T,

@@ -1,5 +1,6 @@
-use crate::lexer::token::{Token, TokenTree};
 use chumsky::prelude::*;
+
+use crate::lexer::token::{Token, TokenTree};
 
 pub(super) fn string_lexer() -> impl Parser<char, TokenTree, Error = Simple<char>> {
     just('"')

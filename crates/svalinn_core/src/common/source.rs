@@ -1,8 +1,9 @@
-use once_cell::sync::OnceCell;
-use regex::Regex;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
+
+use once_cell::sync::OnceCell;
+use regex::Regex;
 
 static COMMENT_REGEX: OnceCell<Regex> = OnceCell::new();
 
