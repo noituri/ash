@@ -1,13 +1,13 @@
+use once_cell::sync::OnceCell;
+use regex::Regex;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use regex::Regex;
-use once_cell::sync::OnceCell;
 
 static COMMENT_REGEX: OnceCell<Regex> = OnceCell::new();
 
 pub struct Source {
-    inner: String
+    inner: String,
 }
 
 impl ToString for Source {
@@ -23,9 +23,7 @@ impl Source {
     }
 
     pub fn from_string<S: Into<String>>(src: S) -> Self {
-        let src = Self {
-            inner: src.into()
-        };
+        let src = Self { inner: src.into() };
 
         src.prepare()
     }
