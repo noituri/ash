@@ -8,25 +8,40 @@ use regex::Regex;
 static COMMENT_REGEX: OnceCell<Regex> = OnceCell::new();
 
 pub struct Source {
+    location: Option<String>,
     inner: String,
-}
-
-impl ToString for Source {
-    fn to_string(&self) -> String {
-        self.inner.clone()
-    }
 }
 
 impl Source {
     pub fn from_file(path: PathBuf) -> Result<Self, Box<dyn Error>> {
-        let source = fs::read_to_string(path)?;
-        Ok(Self::from_string(source))
+        let source = fs::read_to_string(&path)?;
+        let location = path.as_os_str().to_str().map(ToOwned::to_owned);
+        let source = Self {
+            location,
+            inner: source,
+        };
+        Ok(source.prepare())
     }
 
     pub fn from_string<S: Into<String>>(src: S) -> Self {
-        let src = Self { inner: src.into() };
+        let src = Self {
+            location: None,
+            inner: src.into(),
+        };
 
         src.prepare()
+    }
+
+    pub fn inner(&self) -> &str {
+        return &self.inner;
+    }
+
+    pub fn location(&self) -> String {
+        return self
+            .location
+            .as_ref()
+            .unwrap_or(&String::from("<unknown>"))
+            .to_owned();
     }
 
     fn prepare(mut self) -> Self {

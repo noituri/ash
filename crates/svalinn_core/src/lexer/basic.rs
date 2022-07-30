@@ -1,24 +1,33 @@
 use chumsky::prelude::*;
 
-use crate::lexer::token::TokenTree;
+use crate::lexer::token::{Token, TokenTree};
 
-use super::token::Token;
+use super::token::TokenType;
 
-pub(super) fn basic_lexer() -> impl Parser<char, TokenTree, Error = Simple<char>> {
-    let arrow = just("->").to(Token::Arrow.to_tree());
+pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
+    let arrow = just("->").to(TokenType::Arrow.to_token());
 
-    let simple = one_of("+-=*/").map(|c| {
+    let ops = one_of("+-*/")
+        .map_with_span(|c, span| {
+            match c {
+                '+' => TokenType::Plus,
+                '-' => TokenType::Minus,
+                '/' => TokenType::Slash,
+                '*' => TokenType::Asterisk,
+                _ => unreachable!(),
+            }
+            .to_token()
+        })
+        .labelled("operators");
+
+    let other = one_of("=,").map_with_span(|c, span| {
         match c {
-            '+' => Token::Plus,
-            '-' => Token::Minus,
-            '/' => Token::Slash,
-            '*' => Token::Asterisk,
-            '=' => Token::Equal,
-            ',' => Token::Comma,
+            '=' => TokenType::Equal,
+            ',' => TokenType::Comma,
             _ => unreachable!(),
         }
-        .to_tree()
+        .to_token()
     });
 
-    arrow.or(simple)
+    arrow.or(ops).or(other)
 }

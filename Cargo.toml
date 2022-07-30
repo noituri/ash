@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 svalinn_core = { "path" = "./crates/svalinn_core" }
-argh = "0.1.8"
+argh = "0.1"
+ariadne = "0.1"

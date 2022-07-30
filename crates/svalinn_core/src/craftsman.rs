@@ -1,14 +1,14 @@
-use crate::common::Source;
+use crate::common::{Source, SvResult};
 use crate::lexer::Lexer;
+use chumsky::error::Simple;
 
-pub fn build(source: Source) {
+pub fn build(source: &Source) -> SvResult {
     let lexer = Lexer::new();
-    match lexer.scan(&source.to_string()) {
-        Ok(tts) => println!("{:#?}", tts),
-        Err(errs) => errs.into_iter().for_each(|e| println!("{:#?}", e)),
-    }
+    let tokens = lexer.scan(source.inner())?;
+    dbg!(&tokens);
+    Ok(())
 }
 
-pub fn run(source: Source) {
-    build(source);
+pub fn run(source: &Source) -> SvResult {
+    build(source)
 }

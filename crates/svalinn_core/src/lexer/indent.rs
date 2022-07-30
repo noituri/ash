@@ -1,14 +1,15 @@
+use crate::common::Spanned;
 use chumsky::{prelude::*, text::Character};
 
-use crate::lexer::SpanTokenTree;
+use crate::lexer::token::TokenTree;
 
 pub(super) fn indentation_lexer<'a, T, F>(
     token: T,
     make_group: F,
-) -> impl Parser<char, Vec<SpanTokenTree>, Error = Simple<char>> + Clone + 'a
+) -> impl Parser<char, Vec<Spanned<TokenTree>>, Error = Simple<char>> + Clone + 'a
 where
-    T: Parser<char, SpanTokenTree, Error = Simple<char>> + Clone + 'a,
-    F: Fn(Vec<SpanTokenTree>) -> SpanTokenTree + Clone + 'a,
+    T: Parser<char, Spanned<TokenTree>, Error = Simple<char>> + Clone + 'a,
+    F: Fn(Vec<Spanned<TokenTree>>) -> Spanned<TokenTree> + Clone + 'a,
 {
     let line_ws = filter(|c: &char| c.is_inline_whitespace());
 
@@ -22,11 +23,11 @@ where
 
     lines.map(move |lines| {
         fn collapse<F>(
-            mut tree: Vec<(Vec<char>, Vec<SpanTokenTree>)>,
+            mut tree: Vec<(Vec<char>, Vec<Spanned<TokenTree>>)>,
             make_group: &F,
-        ) -> Option<SpanTokenTree>
+        ) -> Option<Spanned<TokenTree>>
         where
-            F: Fn(Vec<SpanTokenTree>) -> SpanTokenTree,
+            F: Fn(Vec<Spanned<TokenTree>>) -> Spanned<TokenTree>,
         {
             while let Some((_, tts)) = tree.pop() {
                 let tt = make_group(tts);
