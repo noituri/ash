@@ -1,6 +1,6 @@
 use crate::common::{Source, SvResult};
 use crate::lexer::Lexer;
-use chumsky::error::Simple;
+
 
 pub fn build(source: &Source) -> SvResult {
     let lexer = Lexer::new();

@@ -1,9 +1,9 @@
 use std::io::Read;
 
-use crate::common::Span;
+
 use chumsky::prelude::*;
 
-use crate::lexer::token::{Token, TokenTree, TokenType};
+use crate::lexer::token::{Token};
 
 pub(super) fn numeric_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
     let int = text::int(10)

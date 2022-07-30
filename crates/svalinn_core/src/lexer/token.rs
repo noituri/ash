@@ -1,4 +1,4 @@
-use crate::common::{Span, Spanned};
+use crate::common::{Spanned};
 use crate::ty::Value;
 
 #[derive(Clone, Debug)]
