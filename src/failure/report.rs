@@ -1,5 +1,5 @@
 use std::hash::Hash;
-use std::ops::Range;
+
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 
