@@ -1,12 +1,14 @@
-use crate::common::{Spanned};
-use crate::ty::Value;
+use core::fmt;
 
-#[derive(Clone, Debug)]
-pub(crate) enum TokenType {
+use crate::common::Spanned;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum Token {
     LParen,
     RParen,
     StartBlock,
     EndBlock,
+    NewLine,
     Equal,
     Minus,
     Plus,
@@ -14,21 +16,48 @@ pub(crate) enum TokenType {
     Slash,
     Arrow,
     Comma,
+    Colon,
+    DoubleColon,
+    Return,
     Identifier(String),
-    Fn,
-    String,
-    I32,
-    F64,
-    Bool,
+    String(String),
+    I32(String),
+    F64(String),
+    Bool(bool),
 }
 
-impl TokenType {
-    pub fn to_token(self) -> Token {
-        Token::new(self, None)
-    }
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tok = match self {
+            Token::LParen => "(",
+            Token::RParen => ")",
+            Token::StartBlock => "IDENT",
+            Token::EndBlock => "DEDENT",
+            Token::NewLine => "NEWLINE",
+            Token::Equal => "=",
+            Token::Minus => "-",
+            Token::Plus => "+",
+            Token::Asterisk => "*",
+            Token::Slash => "/",
+            Token::Arrow => "=>",
+            Token::Comma => ",",
+            Token::Colon => ":",
+            Token::DoubleColon => "::",
+            Token::Return => "return",
+            Token::Identifier(_) => "IDENTIFIER",
+            Token::String(_) => "String",
+            Token::I32(_) => "I32",
+            Token::F64(_) => "F64",
+            Token::Bool(_) => "Bool",
+        };
 
+        f.write_str(tok)
+    }
+}
+
+impl Token {
     pub fn to_tree(self) -> TokenTree {
-        self.to_token().to_tree()
+        TokenTree::Token(self)
     }
 }
 
@@ -44,39 +73,4 @@ pub(crate) enum Delim {
 pub(crate) enum TokenTree {
     Token(Token),
     Tree(Delim, Vec<Spanned<TokenTree>>),
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Token {
-    pub ty: TokenType,
-    pub value: Option<Value>,
-}
-
-impl Token {
-    pub fn new<V: Into<Option<Value>>>(ty: TokenType, value: V) -> Self {
-        Self {
-            ty,
-            value: value.into(),
-        }
-    }
-
-    pub fn string(s: String) -> Self {
-        Self::new(TokenType::String, Value::String(s))
-    }
-
-    pub fn integer(i: i32) -> Self {
-        Self::new(TokenType::I32, Value::I32(i))
-    }
-
-    pub fn float(f: f64) -> Self {
-        Self::new(TokenType::F64, Value::F64(f))
-    }
-
-    pub fn boolean(b: bool) -> Self {
-        Self::new(TokenType::Bool, Value::Bool(b))
-    }
-
-    pub fn to_tree(self) -> TokenTree {
-        TokenTree::Token(self)
-    }
 }

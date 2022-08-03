@@ -1,6 +1,5 @@
 use std::hash::Hash;
 
-
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 
 use svalinn_core::prelude::{Simple, SimpleReason, Source as SvSource};

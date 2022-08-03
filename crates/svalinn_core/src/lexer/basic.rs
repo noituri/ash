@@ -1,33 +1,28 @@
 use chumsky::prelude::*;
 
-use crate::lexer::token::{Token};
-
-use super::token::TokenType;
+use super::token::Token;
 
 pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
-    let arrow = just("->").to(TokenType::Arrow.to_token());
+    let arrow = just("=>").to(Token::Arrow);
+    let colon = just("::")
+        .to(Token::DoubleColon)
+        .or(just(':').to(Token::Colon));
 
     let ops = one_of("+-*/")
-        .map_with_span(|c, _span| {
-            match c {
-                '+' => TokenType::Plus,
-                '-' => TokenType::Minus,
-                '/' => TokenType::Slash,
-                '*' => TokenType::Asterisk,
-                _ => unreachable!(),
-            }
-            .to_token()
+        .map_with_span(|c, _span| match c {
+            '+' => Token::Plus,
+            '-' => Token::Minus,
+            '/' => Token::Slash,
+            '*' => Token::Asterisk,
+            _ => unreachable!(),
         })
         .labelled("operators");
 
-    let other = one_of("=,").map_with_span(|c, _span| {
-        match c {
-            '=' => TokenType::Equal,
-            ',' => TokenType::Comma,
-            _ => unreachable!(),
-        }
-        .to_token()
+    let other = one_of("=,").map_with_span(|c, _span| match c {
+        '=' => Token::Equal,
+        ',' => Token::Comma,
+        _ => unreachable!(),
     });
 
-    arrow.or(ops).or(other)
+    arrow.or(colon).or(ops).or(other)
 }

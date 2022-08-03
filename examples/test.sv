@@ -1,4 +1,8 @@
-main =
-//    log.info "test" <- Logger that needs to be implemented */
-    println /* comment test */ "123" . // test
-    println(321)
+main =>
+    test
+    test2
+        ff
+                
+    // comment test
+    // println /* comment test 2 */ "test"
+    // println(123)

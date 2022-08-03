@@ -3,6 +3,8 @@ use chumsky::{prelude::*, text::Character};
 
 use crate::lexer::token::TokenTree;
 
+use super::token::Token;
+
 pub(super) fn indentation_lexer<'a, T, F>(
     token: T,
     make_group: F,
@@ -31,6 +33,7 @@ where
         {
             while let Some((_, tts)) = tree.pop() {
                 let tt = make_group(tts);
+
                 if let Some(last) = tree.last_mut() {
                     last.1.push(tt);
                 } else {
@@ -44,6 +47,10 @@ where
         for (indent, mut line) in lines {
             let mut indent = indent.as_slice();
             let mut i = 0;
+            if let Some((_, span)) = line.last() {
+                let span = (span.end() - 1)..span.end();
+                line.push((Token::NewLine.to_tree(), span));
+            }
             while let Some(tail) = nesting
                 .get(i)
                 .and_then(|(n, _)| indent.strip_prefix(n.as_slice()))
@@ -51,7 +58,7 @@ where
                 indent = tail;
                 i += 1;
             }
-            if let Some(tail) = collapse(nesting.split_off(i), &make_group) {
+            if let Some(mut tail) = collapse(nesting.split_off(i), &make_group) {
                 nesting.last_mut().unwrap().1.push(tail);
             }
             if indent.len() > 0 {

@@ -4,7 +4,7 @@ use crate::lexer::indent::indentation_lexer;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
 use crate::lexer::string::string_lexer;
-use crate::lexer::token::{Delim, Token, TokenTree, TokenType};
+use crate::lexer::token::{Delim, Token, TokenTree};
 use chumsky::prelude::*;
 use chumsky::{BoxStream, Flat, Stream};
 
@@ -12,11 +12,6 @@ pub(crate) struct Lexer<'a>(BoxedParser<'a, char, Vec<Spanned<TokenTree>>, Simpl
 
 impl<'a> Lexer<'a> {
     pub fn new() -> Self {
-        let keywords = keyword_lexer();
-        let num = numeric_lexer();
-        let basic = basic_lexer();
-        let string = string_lexer();
-
         let tt = recursive(|tt| {
             let tt_list = tt.padded().repeated();
 
@@ -27,10 +22,10 @@ impl<'a> Lexer<'a> {
                     .map(move |tts| TokenTree::Tree(delim_t.clone(), tts))
             };
 
-            keywords
-                .or(string)
-                .or(num)
-                .or(basic)
+            keyword_lexer()
+                .or(string_lexer())
+                .or(numeric_lexer())
+                .or(basic_lexer())
                 .map(TokenTree::Token)
                 .or(delim_tree('(', ')', Delim::Paren))
                 .or(delim_tree('{', '}', Delim::Brace))
@@ -54,7 +49,7 @@ impl<'a> Lexer<'a> {
         Self(parser.boxed())
     }
 
-    pub fn scan(&self, source: &str) -> SvResult<Vec<Spanned<Token>>> {
+    pub fn scan(&self, source: &str) -> SvResult<Vec<Spanned<Token>>, char> {
         let result = self.0.parse(source)?;
         let tokens = Self::flatten_token_trees(result)
             .fetch_tokens()
@@ -78,14 +73,17 @@ impl<'a> Lexer<'a> {
         Stream::from_nested(eoi, tts.into_iter(), move |(tt, span)| match tt {
             TokenTree::Token(tok) => Flat::Single((tok, span)),
             TokenTree::Tree(Delim::Block, tt) => Flat::Many(
-                once((TokenType::StartBlock.to_tree(), span_at(span.start)))
-                    .chain(tt.into_iter())
-                    .chain(once((TokenType::EndBlock.to_tree(), span_at(span.end)))),
+                once((
+                    Token::StartBlock.to_tree(),
+                    span_at(span.start.saturating_sub(1)),
+                ))
+                .chain(tt.into_iter())
+                .chain(once((Token::EndBlock.to_tree(), span_at(span.end)))),
             ),
             TokenTree::Tree(Delim::Paren, tt) => Flat::Many(
-                once((TokenType::LParen.to_tree(), span_at(span.start)))
+                once((Token::LParen.to_tree(), span_at(span.start)))
                     .chain(tt.into_iter())
-                    .chain(once((TokenType::RParen.to_tree(), span_at(span.end - 1)))),
+                    .chain(once((Token::RParen.to_tree(), span_at(span.end - 1)))),
             ),
             TokenTree::Tree(_, _) => unimplemented!(),
         })
