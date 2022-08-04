@@ -35,14 +35,14 @@ impl<'a> Lexer<'a> {
 
         let parser = indentation_lexer(tt, |tts| {
             let span = if tts.is_empty() {
-                0..0usize
+                return None;
             } else {
                 let start = tts.first().unwrap().1.start();
                 let end = tts.last().unwrap().1.end();
                 start..end
             };
 
-            (TokenTree::Tree(Delim::Block, tts), span)
+            Some((TokenTree::Tree(Delim::Block, tts), span))
         })
         .then_ignore(end());
 

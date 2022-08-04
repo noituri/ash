@@ -8,6 +8,7 @@ pub fn build(source: &Source) -> SvResult<(), String> {
     dbg!(&tokens);
     let parser = Parser::new();
     let ast = parser.parse(tokens).string_err()?;
+    dbg!(&ast);
     Ok(())
 }
 

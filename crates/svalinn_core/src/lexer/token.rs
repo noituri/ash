@@ -31,7 +31,7 @@ impl fmt::Display for Token {
         let tok = match self {
             Token::LParen => "(",
             Token::RParen => ")",
-            Token::StartBlock => "IDENT",
+            Token::StartBlock => "INDENT",
             Token::EndBlock => "DEDENT",
             Token::NewLine => "NEWLINE",
             Token::Equal => "=",

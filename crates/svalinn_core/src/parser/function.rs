@@ -5,7 +5,7 @@ use regex::Error;
 
 use super::{
     common::{block_parser, ident_parser},
-    expr::expression_parser,
+    expr::{expression_parser, Expr, ExprRecursive},
     stmt::StmtRecursive,
 };
 
@@ -42,5 +42,31 @@ pub(super) fn function_parser<'a>(
         body,
         args: args.unwrap_or_default(),
         ty: ty.unwrap_or("Void".to_owned()),
+    })
+}
+
+pub(super) fn call_parse<'a>(
+    expr: ExprRecursive<'a>,
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+    let callee = ident_parser().map(Expr::Variable);
+    // let callee = expr.clone();
+    // let callee = expression_parser();
+    // TODO: function calls inside args need to use parens or accept 0-1 args
+    // TODO: convert variable of Function type to a callee
+    let args = expr.clone().separated_by(just(Token::Comma));
+    let args = args
+        .clone()
+        .delimited_by(just(Token::LParen), just(Token::RParen))
+        .repeated()
+        .or(args.repeated());
+    // .or(expr.clone().separated_by(just(Token::Comma)));
+
+    // callee.then(args).map(|(callee, args)| Expr::Call {
+    //     args,
+    //     callee: Box::new(callee),
+    // })
+    callee.then(args).foldl(|callee, args| Expr::Call {
+        args,
+        callee: Box::new(callee),
     })
 }

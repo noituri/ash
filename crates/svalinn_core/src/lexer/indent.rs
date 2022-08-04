@@ -11,7 +11,7 @@ pub(super) fn indentation_lexer<'a, T, F>(
 ) -> impl Parser<char, Vec<Spanned<TokenTree>>, Error = Simple<char>> + Clone + 'a
 where
     T: Parser<char, Spanned<TokenTree>, Error = Simple<char>> + Clone + 'a,
-    F: Fn(Vec<Spanned<TokenTree>>) -> Spanned<TokenTree> + Clone + 'a,
+    F: Fn(Vec<Spanned<TokenTree>>) -> Option<Spanned<TokenTree>> + Clone + 'a,
 {
     let line_ws = filter(|c: &char| c.is_inline_whitespace());
 
@@ -29,15 +29,15 @@ where
             make_group: &F,
         ) -> Option<Spanned<TokenTree>>
         where
-            F: Fn(Vec<Spanned<TokenTree>>) -> Spanned<TokenTree>,
+            F: Fn(Vec<Spanned<TokenTree>>) -> Option<Spanned<TokenTree>>,
         {
             while let Some((_, tts)) = tree.pop() {
-                let tt = make_group(tts);
-
-                if let Some(last) = tree.last_mut() {
-                    last.1.push(tt);
-                } else {
-                    return Some(tt);
+                if let Some(tt) = make_group(tts) {
+                    if let Some(last) = tree.last_mut() {
+                        last.1.push(tt);
+                    } else {
+                        return Some(tt);
+                    }
                 }
             }
             None
