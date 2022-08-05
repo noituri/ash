@@ -53,26 +53,9 @@ pub(super) fn call_parse<'a>(
         .separated_by(just(Token::Comma))
         .delimited_by(just(Token::LParen), just(Token::RParen))
         .repeated();
-    let call = callee.then(args).foldl(|callee, args| Expr::Call {
+    callee.then(args).foldl(|callee, args| Expr::Call {
         args,
         callee: Box::new(callee),
         has_parens: true,
-    });
-
-    call_no_parens_parser(expr).or(call)
-}
-
-pub(super) fn call_no_parens_parser<'a>(
-    expr: ExprRecursive<'a>,
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
-    let callee = ident_parser().map(Expr::Variable);
-    // TODO: convert variable of Function type to a callee
-    // TODO: (hack fix later) currently no-paren call may take too many args so next pass should correct that
-    let args = expr.clone().separated_by(just(Token::Comma)).at_least(1);
-
-    callee.then(args).map(|(callee, args)| Expr::Call {
-        args,
-        callee: Box::new(callee),
-        has_parens: false,
     })
 }
