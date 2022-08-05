@@ -2,7 +2,7 @@ main =>
     test
     test2
     ff(a, b)(aaaaa,bbb)
-    ff a, b                
+    ff a, b(c), v
     // comment test
     // println /* comment test 2 */ "test"
     // println(123)
