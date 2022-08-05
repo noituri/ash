@@ -3,7 +3,7 @@ use crate::parser::stmt::Stmt;
 use chumsky::prelude::*;
 
 use super::{
-    common::{block_parser, ident_parser},
+    common::{block_parser, ident_parser, ident_with_suffix_parser},
     expr::{expression_parser, Expr, ExprRecursive},
     stmt::StmtRecursive,
 };
@@ -53,9 +53,23 @@ pub(super) fn call_parse<'a>(
         .separated_by(just(Token::Comma))
         .delimited_by(just(Token::LParen), just(Token::RParen))
         .repeated();
-    callee.then(args).foldl(|callee, args| Expr::Call {
+    let call = callee.then(args).foldl(|callee, args| Expr::Call {
         args,
         callee: Box::new(callee),
-        has_parens: true,
+    });
+
+    call_no_parens_parse(expr).or(call)
+}
+
+pub(super) fn call_no_parens_parse<'a>(
+    expr: ExprRecursive<'a>,
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+    // TODO: convert variable of Function type to a callee
+    // TODO: (hack fix later) currently no-paren call may take too many args so next pass should correct that
+    let callee = ident_with_suffix_parser().map(Expr::Variable);
+    let args = expr.clone().separated_by(just(Token::Comma));
+    callee.then(args).map(|(callee, args)| Expr::Call {
+        args,
+        callee: Box::new(callee),
     })
 }

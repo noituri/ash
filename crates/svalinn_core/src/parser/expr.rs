@@ -6,11 +6,7 @@ use super::{common::ident_parser, function::call_parse};
 #[derive(Debug)]
 pub(crate) enum Expr {
     Variable(String),
-    Call {
-        callee: Box<Expr>,
-        args: Vec<Expr>,
-        has_parens: bool,
-    },
+    Call { callee: Box<Expr>, args: Vec<Expr> },
     Group(Box<Expr>),
 }
 
