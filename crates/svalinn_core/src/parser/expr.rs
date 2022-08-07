@@ -1,13 +1,15 @@
 use crate::lexer::token::Token;
+use crate::parser::operator::unary_parser;
 use chumsky::prelude::*;
 
-use super::{common::ident_parser, function::call_parse};
+use super::{common::ident_parser, function::call_parser, operator::UnaryOp};
 
 #[derive(Debug)]
 pub(crate) enum Expr {
     Variable(String),
     Call { callee: Box<Expr>, args: Vec<Expr> },
     Group(Box<Expr>),
+    Unary { op: UnaryOp, right: Box<Expr> },
 }
 
 pub(super) type ExprRecursive<'a> = Recursive<'a, Token, Expr, Simple<Token>>;
@@ -19,6 +21,10 @@ pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Tok
             .clone()
             .delimited_by(just(Token::LParen), just(Token::RParen))
             .map(|e| Expr::Group(Box::new(e)));
-        call_parse(expr.clone()).or(variable).or(group)
+
+        unary_parser(expr.clone())
+            .or(call_parser(expr.clone()))
+            .or(variable)
+            .or(group)
     })
 }

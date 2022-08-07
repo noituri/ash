@@ -44,7 +44,7 @@ pub(super) fn function_parser<'a>(
     })
 }
 
-pub(super) fn call_parse<'a>(
+pub(super) fn call_parser<'a>(
     expr: ExprRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
     let callee = ident_parser().map(Expr::Variable);
@@ -58,10 +58,10 @@ pub(super) fn call_parse<'a>(
         callee: Box::new(callee),
     });
 
-    call_no_parens_parse(expr).or(call)
+    call_no_parens_parser(expr).or(call)
 }
 
-pub(super) fn call_no_parens_parse<'a>(
+pub(super) fn call_no_parens_parser<'a>(
     expr: ExprRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
     // TODO: convert variable of Function type to a callee
