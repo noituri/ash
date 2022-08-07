@@ -9,7 +9,13 @@ pub(crate) enum UnaryOp {
     Neg,
 }
 
-pub(super) fn unary_parser<'a>(
+pub(super) fn operator_parser<'a>(
+    expr: ExprRecursive<'a>,
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+    unary_parser(expr)
+}
+
+fn unary_parser<'a>(
     expr: ExprRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
     let minus = just(Token::Minus)

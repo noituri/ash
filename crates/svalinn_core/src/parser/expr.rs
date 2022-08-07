@@ -1,12 +1,17 @@
-use crate::lexer::token::Token;
-use crate::parser::operator::unary_parser;
+use crate::{lexer::token::Token, ty::Value};
 use chumsky::prelude::*;
 
-use super::{common::ident_parser, function::call_parser, operator::UnaryOp};
+use super::{
+    common::ident_parser,
+    function::call_parser,
+    literal::literal_parser,
+    operator::{operator_parser, UnaryOp},
+};
 
 #[derive(Debug)]
 pub(crate) enum Expr {
     Variable(String),
+    Literal(Value),
     Call { callee: Box<Expr>, args: Vec<Expr> },
     Group(Box<Expr>),
     Unary { op: UnaryOp, right: Box<Expr> },
@@ -22,7 +27,8 @@ pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Tok
             .delimited_by(just(Token::LParen), just(Token::RParen))
             .map(|e| Expr::Group(Box::new(e)));
 
-        unary_parser(expr.clone())
+        operator_parser(expr.clone())
+            .or(literal_parser())
             .or(call_parser(expr.clone()))
             .or(variable)
             .or(group)
