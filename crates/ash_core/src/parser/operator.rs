@@ -9,6 +9,15 @@ pub(crate) enum UnaryOp {
     Neg,
 }
 
+#[derive(Debug)]
+pub(crate) enum BinaryOp {
+    Sum,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+}
+
 pub(super) fn operator_parser<'a>(
     expr: ExprRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
@@ -29,3 +38,9 @@ fn unary_parser<'a>(
 
     minus
 }
+
+// fn binary_parser<'a>(
+//     expr: ExprRecursive<'a>,
+// ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+
+// }

@@ -8,12 +8,13 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         .to(Token::DoubleColon)
         .or(just(':').to(Token::Colon));
 
-    let ops = one_of("+-*/")
+    let ops = one_of("+-*/%")
         .map_with_span(|c, _span| match c {
             '+' => Token::Plus,
             '-' => Token::Minus,
             '/' => Token::Slash,
             '*' => Token::Asterisk,
+            '%' => Token::Percent,
             _ => unreachable!(),
         })
         .labelled("operators");

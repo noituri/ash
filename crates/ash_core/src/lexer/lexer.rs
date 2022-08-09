@@ -1,6 +1,6 @@
 use crate::common::{Span, Spanned, SvResult};
 use crate::lexer::basic::basic_lexer;
-use crate::lexer::indent::indentation_lexer;
+use crate::lexer::indent::handle_newlines;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
 use crate::lexer::string::string_lexer;
@@ -33,19 +33,20 @@ impl<'a> Lexer<'a> {
                 .map_with_span(|tt, span| (tt, span))
         });
 
-        let parser = indentation_lexer(tt, |tts| {
-            let span = if tts.is_empty() {
-                return None;
-            } else {
-                let start = tts.first().unwrap().1.start();
-                let end = tts.last().unwrap().1.end();
-                start..end
-            };
+        // TODO: Add newlines in a smart way
+        // let parser = indentation_lexer(tt, |tts| {
+        //     let span = if tts.is_empty() {
+        //         return None;
+        //     } else {
+        //         let start = tts.first().unwrap().1.start();
+        //         let end = tts.last().unwrap().1.end();
+        //         start..end
+        //     };
 
-            Some((TokenTree::Tree(Delim::Block, tts), span))
-        })
-        .then_ignore(end());
-
+        //     Some((TokenTree::Tree(Delim::Block, tts), span))
+        // })
+        // .then_ignore(end());
+        let parser = handle_newlines(tt).then_ignore(end());
         Self(parser.boxed())
     }
 
@@ -72,13 +73,13 @@ impl<'a> Lexer<'a> {
 
         Stream::from_nested(eoi, tts.into_iter(), move |(tt, span)| match tt {
             TokenTree::Token(tok) => Flat::Single((tok, span)),
-            TokenTree::Tree(Delim::Block, tt) => Flat::Many(
+            TokenTree::Tree(Delim::Brace, tt) => Flat::Many(
                 once((
-                    Token::StartBlock.to_tree(),
+                    Token::LBrace.to_tree(),
                     span_at(span.start.saturating_sub(1)),
                 ))
                 .chain(tt.into_iter())
-                .chain(once((Token::EndBlock.to_tree(), span_at(span.end)))),
+                .chain(once((Token::RBrace.to_tree(), span_at(span.end)))),
             ),
             TokenTree::Tree(Delim::Paren, tt) => Flat::Many(
                 once((Token::LParen.to_tree(), span_at(span.start)))

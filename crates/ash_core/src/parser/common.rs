@@ -38,9 +38,9 @@ pub(super) fn ident_with_suffix_parser() -> impl Parser<Token, String, Error = S
 pub(super) fn block_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> + 'a {
-    just(Token::StartBlock)
+    just(Token::LBrace)
         .ignore_then(stmt.repeated())
-        .then_ignore(just(Token::EndBlock))
+        .then_ignore(just(Token::RBrace))
         .debug("BLOCK NEW")
     // stmt.repeated()
     //     .debug("BLOCK")

@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 
-use svalinn_core::prelude::{Simple, SimpleReason, Source as SvSource};
+use ash_core::prelude::{Simple, SimpleReason, Source as SvSource};
 
 pub fn error<T>(source: &SvSource, err: Simple<T>)
 where

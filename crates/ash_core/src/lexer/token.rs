@@ -6,13 +6,14 @@ use crate::common::Spanned;
 pub(crate) enum Token {
     LParen,
     RParen,
-    StartBlock,
-    EndBlock,
+    LBrace,
+    RBrace,
     NewLine,
     Equal,
     Minus,
     Plus,
     Asterisk,
+    Percent,
     Slash,
     Arrow,
     Comma,
@@ -31,14 +32,15 @@ impl fmt::Display for Token {
         let tok = match self {
             Token::LParen => "(",
             Token::RParen => ")",
-            Token::StartBlock => "INDENT",
-            Token::EndBlock => "DEDENT",
+            Token::LBrace => "{",
+            Token::RBrace => "}",
             Token::NewLine => "NEWLINE",
             Token::Equal => "=",
             Token::Minus => "-",
             Token::Plus => "+",
             Token::Asterisk => "*",
             Token::Slash => "/",
+            Token::Percent => "%",
             Token::Arrow => "=>",
             Token::Comma => ",",
             Token::Colon => ":",
@@ -66,7 +68,6 @@ pub(crate) enum Delim {
     Paren,
     Brace,
     Bracket,
-    Block,
 }
 
 #[derive(Clone, Debug)]

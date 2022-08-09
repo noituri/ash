@@ -1,11 +1,11 @@
 [package]
-name = "svalinn"
+name = "ash_lang"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-svalinn_core = { "path" = "./crates/svalinn_core" }
+ash_core = { "path" = "./crates/ash_core" }
 argh = "0.1"
 ariadne = "0.1"

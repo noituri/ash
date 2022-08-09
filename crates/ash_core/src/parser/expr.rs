@@ -5,16 +5,27 @@ use super::{
     common::ident_parser,
     function::call_parser,
     literal::literal_parser,
-    operator::{operator_parser, UnaryOp},
+    operator::{operator_parser, BinaryOp, UnaryOp},
 };
 
 #[derive(Debug)]
 pub(crate) enum Expr {
     Variable(String),
     Literal(Value),
-    Call { callee: Box<Expr>, args: Vec<Expr> },
+    Call {
+        callee: Box<Expr>,
+        args: Vec<Expr>,
+    },
     Group(Box<Expr>),
-    Unary { op: UnaryOp, right: Box<Expr> },
+    Unary {
+        op: UnaryOp,
+        right: Box<Expr>,
+    },
+    Binary {
+        left: Box<Expr>,
+        op: BinaryOp,
+        right: Box<Expr>,
+    },
 }
 
 pub(super) type ExprRecursive<'a> = Recursive<'a, Token, Expr, Simple<Token>>;

@@ -65,7 +65,6 @@ pub(super) fn call_no_parens_parser<'a>(
     expr: ExprRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
     // TODO: convert variable of Function type to a callee
-    // TODO: (hack fix later) currently no-paren call may take too many args so next pass should correct that
     let callee = ident_with_suffix_parser().map(Expr::Variable);
     let args = expr.clone().separated_by(just(Token::Comma));
     callee.then(args).map(|(callee, args)| Expr::Call {
