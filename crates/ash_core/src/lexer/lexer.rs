@@ -1,11 +1,11 @@
 use crate::common::{Span, Spanned, SvResult};
 use crate::lexer::basic::basic_lexer;
-use crate::lexer::indent::handle_newlines;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
 use crate::lexer::string::string_lexer;
 use crate::lexer::token::{Delim, Token, TokenTree};
 use chumsky::prelude::*;
+use chumsky::text::Character;
 use chumsky::{BoxStream, Flat, Stream};
 
 pub(crate) struct Lexer<'a>(BoxedParser<'a, char, Vec<Spanned<TokenTree>>, Simple<char>>);
@@ -13,7 +13,7 @@ pub(crate) struct Lexer<'a>(BoxedParser<'a, char, Vec<Spanned<TokenTree>>, Simpl
 impl<'a> Lexer<'a> {
     pub fn new() -> Self {
         let tt = recursive(|tt| {
-            let tt_list = tt.padded().repeated();
+            let tt_list = tt.repeated();
 
             let delim_tree = |delim_l: char, delim_r: char, delim_t: Delim| {
                 tt_list
@@ -22,10 +22,18 @@ impl<'a> Lexer<'a> {
                     .map(move |tts| TokenTree::Tree(delim_t.clone(), tts))
             };
 
+            let newline = text::newline().to(Token::NewLine);
+
             keyword_lexer()
                 .or(string_lexer())
                 .or(numeric_lexer())
                 .or(basic_lexer())
+                .or(newline)
+                .padded_by(
+                    filter(|c: &char| c.is_inline_whitespace())
+                        .ignored()
+                        .repeated(),
+                )
                 .map(TokenTree::Token)
                 .or(delim_tree('(', ')', Delim::Paren))
                 .or(delim_tree('{', '}', Delim::Brace))
@@ -33,20 +41,7 @@ impl<'a> Lexer<'a> {
                 .map_with_span(|tt, span| (tt, span))
         });
 
-        // TODO: Add newlines in a smart way
-        // let parser = indentation_lexer(tt, |tts| {
-        //     let span = if tts.is_empty() {
-        //         return None;
-        //     } else {
-        //         let start = tts.first().unwrap().1.start();
-        //         let end = tts.last().unwrap().1.end();
-        //         start..end
-        //     };
-
-        //     Some((TokenTree::Tree(Delim::Block, tts), span))
-        // })
-        // .then_ignore(end());
-        let parser = handle_newlines(tt).then_ignore(end());
+        let parser = tt.repeated().then_ignore(end());
         Self(parser.boxed())
     }
 

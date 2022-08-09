@@ -1,6 +1,8 @@
-use chumsky::prelude::*;
+use chumsky::{prelude::*, text::Character};
 
-use super::token::Token;
+use crate::common::Spanned;
+
+use super::token::{Token, TokenTree};
 
 pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
     let arrow = just("=>").to(Token::Arrow);

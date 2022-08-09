@@ -1,7 +1,10 @@
 use crate::lexer::token::Token;
 use chumsky::prelude::*;
 
-use super::stmt::{statement_parser, Stmt, StmtRecursive};
+use super::{
+    expr::Expr,
+    stmt::{statement_parser, Stmt, StmtRecursive},
+};
 
 pub(super) fn ident_parser() -> impl Parser<Token, String, Error = Simple<Token>> + Clone {
     filter_map(|span, tok| match tok {
@@ -37,12 +40,9 @@ pub(super) fn ident_with_suffix_parser() -> impl Parser<Token, String, Error = S
 
 pub(super) fn block_parser<'a>(
     stmt: StmtRecursive<'a>,
-) -> impl Parser<Token, Vec<Stmt>, Error = Simple<Token>> + 'a {
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
     just(Token::LBrace)
         .ignore_then(stmt.repeated())
         .then_ignore(just(Token::RBrace))
-        .debug("BLOCK NEW")
-    // stmt.repeated()
-    //     .debug("BLOCK")
-    //     .delimited_by(just(Token::StartBlock), just(Token::EndBlock))
+        .map(Expr::Block)
 }

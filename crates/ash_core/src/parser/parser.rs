@@ -7,7 +7,7 @@ pub(crate) struct Parser<'a>(BoxedParser<'a, Token, Vec<Stmt>, Simple<Token>>);
 
 impl<'a> Parser<'a> {
     pub fn new() -> Self {
-        let parser = recursive(|stmt| statement_parser(stmt)).repeated();
+        let parser = statement_parser().repeated();
         Self(parser.then_ignore(end()).boxed())
     }
 

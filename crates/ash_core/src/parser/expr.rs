@@ -2,10 +2,11 @@ use crate::{lexer::token::Token, ty::Value};
 use chumsky::prelude::*;
 
 use super::{
-    common::ident_parser,
+    common::{block_parser, ident_parser},
     function::call_parser,
     literal::literal_parser,
     operator::{operator_parser, BinaryOp, UnaryOp},
+    stmt::Stmt,
 };
 
 #[derive(Debug)]
@@ -16,6 +17,7 @@ pub(crate) enum Expr {
         callee: Box<Expr>,
         args: Vec<Expr>,
     },
+    Block(Vec<Stmt>),
     Group(Box<Expr>),
     Unary {
         op: UnaryOp,

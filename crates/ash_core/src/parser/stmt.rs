@@ -2,6 +2,7 @@ use crate::lexer::token::Token;
 use chumsky::prelude::*;
 
 use super::{
+    common::block_parser,
     expr::{expression_parser, Expr},
     function::function_parser,
 };
@@ -19,15 +20,20 @@ pub(crate) enum Stmt {
 
 pub(super) type StmtRecursive<'a> = Recursive<'a, Token, Stmt, Simple<Token>>;
 
-pub(super) fn statement_parser<'a>(
+pub(super) fn statement_parser() -> impl Parser<Token, Stmt, Error = Simple<Token>> {
+    recursive(|stmt| {
+        let expr = expression_parser()
+            .then_ignore(just(Token::NewLine))
+            .map(Stmt::Expression);
+
+        function_parser(stmt)
+            .or(expr)
+            .padded_by(just(Token::NewLine).repeated())
+    })
+}
+
+pub(super) fn stmt_expression_parser<'a>(
     stmt: StmtRecursive<'a>,
-) -> impl Parser<Token, Stmt, Error = Simple<Token>> + 'a {
-    // recursive(|stmt| function_parser(stmt).or(expression_parser().map(Stmt::Expression)))
-    //     .debug("STMT")
-    let expr = expression_parser()
-        .then_ignore(just(Token::NewLine))
-        .debug("EXPR STMT")
-        .map(Stmt::Expression);
-    function_parser(stmt).or(expr)
-    // .padded_by(just(Token::NewLine).repeated())
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+    block_parser(stmt).or(expression_parser())
 }
