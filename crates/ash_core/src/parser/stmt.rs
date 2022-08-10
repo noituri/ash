@@ -4,7 +4,7 @@ use chumsky::prelude::*;
 use super::{
     common::block_parser,
     expr::{expression_parser, Expr},
-    function::function_parser, variable::{variable_decl_parse, variable_assign_parse},
+    function::{function_parser, return_parser}, variable::{variable_decl_parse, variable_assign_parse},
 };
 
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub(crate) enum Stmt {
     Function {
         name: String,
         args: Vec<(String, String)>,
-        body: Vec<Stmt>,
+        body: Box<Stmt>,
         ty: String, // TODO: use Ty enum,
     },
     VariableDecl {
@@ -24,6 +24,7 @@ pub(crate) enum Stmt {
         name: String,
         value: Expr,
     },
+    Return(Expr),
     Expression(Expr),
 }
 
@@ -37,7 +38,8 @@ pub(super) fn statement_parser() -> impl Parser<Token, Stmt, Error = Simple<Toke
 
         function_parser(stmt.clone())
             .or(variable_decl_parse(stmt.clone()))
-            .or(variable_assign_parse(stmt))
+            .or(variable_assign_parse(stmt.clone()))
+            .or(return_parser(stmt))
             .or(expr)
             .padded_by(just(Token::NewLine).repeated())
     })

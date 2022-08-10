@@ -28,7 +28,7 @@ pub(super) fn function_parser<'a>(
     let body = just(Token::Equal)
         .ignore_then(stmt_expression_parser(stmt))
         .then_ignore(just(Token::NewLine))
-        .map(|expr| vec![Stmt::Expression(expr)]);
+        .map(Stmt::Expression);
 
     just(Token::Function)
         .ignore_then(name)
@@ -37,7 +37,7 @@ pub(super) fn function_parser<'a>(
         .then(body)
         .map(|(((name, args), ty), body)| Stmt::Function {
             name,
-            body,
+            body: Box::new(body),
             args: args.unwrap_or_default(),
             ty: ty.unwrap_or("Void".to_owned()),
         })
@@ -71,4 +71,12 @@ pub(super) fn call_no_parens_parser<'a>(
         args,
         callee: Box::new(callee),
     })
+}
+
+pub(super) fn return_parser<'a>(
+    stmt: StmtRecursive<'a>
+) -> impl Parser<Token, Stmt, Error = Simple<Token>> + 'a {
+    just(Token::Return)
+        .ignore_then(stmt_expression_parser(stmt).then_ignore(just(Token::NewLine)))
+        .map(Stmt::Return)
 }

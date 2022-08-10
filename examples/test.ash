@@ -20,3 +20,9 @@ fun sum_test = {
     sum(3, 4)
     sum 5, 6
 }
+
+fun some_num: I32 = {
+    fun inner = println "INNER"
+    inner
+    return 3 + 5
+}
