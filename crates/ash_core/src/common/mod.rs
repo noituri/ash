@@ -3,8 +3,6 @@ use std::{fmt, hash::Hash};
 use chumsky::error::Simple;
 pub use source::*;
 
-use crate::lexer::token::Token;
-
 pub mod source;
 
 pub(crate) type Spanned<T> = (T, Span);

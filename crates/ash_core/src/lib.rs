@@ -1,6 +1,6 @@
-mod common;
 mod ashery;
+mod common;
 mod lexer;
-mod ty;
 mod parser;
 pub mod prelude;
+mod ty;

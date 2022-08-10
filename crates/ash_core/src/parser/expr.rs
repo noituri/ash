@@ -2,7 +2,7 @@ use crate::{lexer::token::Token, ty::Value};
 use chumsky::prelude::*;
 
 use super::{
-    common::{block_parser, ident_parser},
+    common::ident_parser,
     function::call_parser,
     literal::literal_parser,
     operator::{operator_parser, BinaryOp, UnaryOp},
@@ -40,11 +40,11 @@ pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Tok
             .delimited_by(just(Token::LParen), just(Token::RParen))
             .map(|e| Expr::Group(Box::new(e)));
 
-            let expr = literal_parser()
-                .or(call_parser(expr.clone()))
-                .or(variable)
-                .or(group);
-            // .then(operator_parser(expr.clone()))
-            operator_parser(expr)
+        let expr = literal_parser()
+            .or(call_parser(expr.clone()))
+            .or(variable)
+            .or(group);
+        // .then(operator_parser(expr.clone()))
+        operator_parser(expr)
     })
 }

@@ -2,7 +2,7 @@ use chumsky::prelude::*;
 
 use crate::lexer::token::Token;
 
-use super::expr::{Expr, ExprRecursive};
+use super::expr::Expr;
 
 #[derive(Debug)]
 pub(crate) enum UnaryOp {
@@ -21,19 +21,17 @@ pub(crate) enum BinaryOp {
 }
 
 pub(super) fn operator_parser<'a, P>(
-    expr: P
+    expr: P,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a
 where
-    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
+    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a,
 {
-    binary_parser(unary_parser(expr))//.or(binary_parser(expr))
+    binary_parser(unary_parser(expr)) //.or(binary_parser(expr))
 }
 
-fn unary_parser<'a, P>(
-    expr: P
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
+fn unary_parser<'a, P>(expr: P) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
 where
-    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
+    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a,
 {
     let minus = just(Token::Minus)
         .repeated()
@@ -47,30 +45,33 @@ where
     minus
 }
 
-fn binary_parser<'a, P>(
-    expr: P
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a
+fn binary_parser<'a, P>(expr: P) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a
 where
-    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
+    P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a,
 {
     let op = just(Token::Asterisk)
         .to(BinaryOp::Mul)
         .or(just(Token::Slash).to(BinaryOp::Div));
-    let product = expr.clone()
+    let product = expr
+        .clone()
         .then(op.then(expr).repeated())
         .foldl(|a, (op, b)| Expr::Binary {
             left: Box::new(a),
             op,
             right: Box::new(b),
         });
-    
+
     let op = just(Token::Plus)
         .to(BinaryOp::Sum)
         .or(just(Token::Minus).to(BinaryOp::Sub));
     let sum = product
         .clone()
         .then(op.then(product).repeated())
-        .foldl(|a, (op, b)| Expr::Binary { left: Box::new(a), op, right: Box::new(b) });
+        .foldl(|a, (op, b)| Expr::Binary {
+            left: Box::new(a),
+            op,
+            right: Box::new(b),
+        });
 
     let op = just(Token::DoubleEqual)
         .to(BinaryOp::Equal)
@@ -78,7 +79,11 @@ where
     let compare = sum
         .clone()
         .then(op.then(sum).repeated())
-        .foldl(|a, (op, b)| Expr::Binary { left: Box::new(a), op, right: Box::new(b) });
+        .foldl(|a, (op, b)| Expr::Binary {
+            left: Box::new(a),
+            op,
+            right: Box::new(b),
+        });
 
     compare
 }

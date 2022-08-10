@@ -1,10 +1,6 @@
-use std::ptr::eq;
+use chumsky::prelude::*;
 
-use chumsky::{prelude::*, text::Character};
-
-use crate::common::Spanned;
-
-use super::token::{Token, TokenTree};
+use super::token::Token;
 
 pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
     let arrow = just("=>").to(Token::Arrow);
@@ -31,5 +27,10 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         _ => unreachable!(),
     });
 
-    arrow.or(colon).or(equal_equal).or(not_equal).or(ops).or(other)
+    arrow
+        .or(colon)
+        .or(equal_equal)
+        .or(not_equal)
+        .or(ops)
+        .or(other)
 }

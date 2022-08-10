@@ -1,10 +1,7 @@
 use crate::lexer::token::Token;
 use chumsky::prelude::*;
 
-use super::{
-    expr::Expr,
-    stmt::{statement_parser, Stmt, StmtRecursive},
-};
+use super::{expr::Expr, stmt::StmtRecursive};
 
 pub(super) fn ident_parser() -> impl Parser<Token, String, Error = Simple<Token>> + Clone {
     filter_map(|span, tok| match tok {

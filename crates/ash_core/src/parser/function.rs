@@ -3,8 +3,8 @@ use crate::parser::stmt::Stmt;
 use chumsky::prelude::*;
 
 use super::{
-    common::{block_parser, ident_parser, ident_with_suffix_parser},
-    expr::{expression_parser, Expr, ExprRecursive},
+    common::{ident_parser, ident_with_suffix_parser},
+    expr::{Expr, ExprRecursive},
     stmt::{stmt_expression_parser, StmtRecursive},
 };
 
