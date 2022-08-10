@@ -30,19 +30,18 @@ pub(super) fn function_parser<'a>(
         .then_ignore(just(Token::NewLine))
         .map(|expr| vec![Stmt::Expression(expr)]);
 
-    let decl = just(Token::Function)
+    just(Token::Function)
         .ignore_then(name)
         .then(args.or_not())
         .then(return_type.or_not())
         .then(body)
-        .labelled("function");
-
-    decl.map(|(((name, args), ty), body)| Stmt::Function {
-        name,
-        body,
-        args: args.unwrap_or_default(),
-        ty: ty.unwrap_or("Void".to_owned()),
-    })
+        .map(|(((name, args), ty), body)| Stmt::Function {
+            name,
+            body,
+            args: args.unwrap_or_default(),
+            ty: ty.unwrap_or("Void".to_owned()),
+        })
+        .labelled("function")
 }
 
 pub(super) fn call_parser<'a>(

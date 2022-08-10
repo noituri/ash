@@ -10,6 +10,7 @@ pub(super) fn keyword_lexer() -> impl Parser<char, Token, Error = Simple<char>> 
             "false" => Token::Bool(false),
             "return" => Token::Return,
             "fun" => Token::Function,
+            "let" => Token::Let,
             _ => Token::Identifier {
                 value: ident,
                 space_sufix: !space.is_empty(),

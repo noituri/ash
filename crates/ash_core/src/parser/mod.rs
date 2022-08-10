@@ -5,3 +5,4 @@ mod literal;
 mod operator;
 pub(crate) mod parser;
 mod stmt;
+mod variable;

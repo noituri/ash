@@ -26,7 +26,7 @@ pub(super) fn operator_parser<'a, P>(
 where
     P: Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a,
 {
-    binary_parser(unary_parser(expr)) //.or(binary_parser(expr))
+    binary_parser(unary_parser(expr))
 }
 
 fn unary_parser<'a, P>(expr: P) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a
@@ -35,7 +35,6 @@ where
 {
     let minus = just(Token::Minus)
         .repeated()
-        // .at_least(1)
         .then(expr)
         .foldr(|_, rhs| Expr::Unary {
             op: UnaryOp::Neg,
