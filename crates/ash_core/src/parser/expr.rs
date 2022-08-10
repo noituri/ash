@@ -40,10 +40,11 @@ pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Tok
             .delimited_by(just(Token::LParen), just(Token::RParen))
             .map(|e| Expr::Group(Box::new(e)));
 
-        operator_parser(expr.clone())
-            .or(literal_parser())
-            .or(call_parser(expr.clone()))
-            .or(variable)
-            .or(group)
+            let expr = literal_parser()
+                .or(call_parser(expr.clone()))
+                .or(variable)
+                .or(group);
+            // .then(operator_parser(expr.clone()))
+            operator_parser(expr)
     })
 }

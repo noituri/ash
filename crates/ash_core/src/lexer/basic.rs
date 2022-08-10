@@ -1,3 +1,5 @@
+use std::ptr::eq;
+
 use chumsky::{prelude::*, text::Character};
 
 use crate::common::Spanned;
@@ -10,6 +12,8 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         .to(Token::DoubleColon)
         .or(just(':').to(Token::Colon));
 
+    let equal_equal = just("==").to(Token::DoubleEqual);
+    let not_equal = just("!=").to(Token::NotEqual);
     let ops = one_of("+-*/%")
         .map_with_span(|c, _span| match c {
             '+' => Token::Plus,
@@ -27,5 +31,5 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         _ => unreachable!(),
     });
 
-    arrow.or(colon).or(ops).or(other)
+    arrow.or(colon).or(equal_equal).or(not_equal).or(ops).or(other)
 }

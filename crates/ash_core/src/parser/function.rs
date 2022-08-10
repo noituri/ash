@@ -47,7 +47,7 @@ pub(super) fn function_parser<'a>(
 
 pub(super) fn call_parser<'a>(
     expr: ExprRecursive<'a>,
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a {
     let callee = ident_parser().map(Expr::Variable);
     let args = expr
         .clone()
@@ -64,7 +64,7 @@ pub(super) fn call_parser<'a>(
 
 pub(super) fn call_no_parens_parser<'a>(
     expr: ExprRecursive<'a>,
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a {
     // TODO: convert variable of Function type to a callee
     let callee = ident_with_suffix_parser().map(Expr::Variable);
     let args = expr.clone().separated_by(just(Token::Comma)).at_least(1);
