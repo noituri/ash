@@ -4,6 +4,10 @@ fun main = {
     println("test", "test2")
     let test_var: F64 = 123.0
     println (sum 1, 2), sum(3, 4)
+    test_var = {
+        let a = 1
+        a + 1
+    }
     sum_test
     // Operator test
     let v = (1+5)+3*-2 == 1

@@ -4,7 +4,7 @@ use chumsky::prelude::*;
 use super::{
     common::block_parser,
     expr::{expression_parser, Expr},
-    function::function_parser, variable::variable_decl_parse,
+    function::function_parser, variable::{variable_decl_parse, variable_assign_parse},
 };
 
 #[derive(Debug)]
@@ -20,6 +20,10 @@ pub(crate) enum Stmt {
         ty: Option<String>, // TODO: use Ty enum
         value: Expr,
     },
+    VariableAssign {
+        name: String,
+        value: Expr,
+    },
     Expression(Expr),
 }
 
@@ -32,7 +36,8 @@ pub(super) fn statement_parser() -> impl Parser<Token, Stmt, Error = Simple<Toke
             .map(Stmt::Expression);
 
         function_parser(stmt.clone())
-            .or(variable_decl_parse(stmt))
+            .or(variable_decl_parse(stmt.clone()))
+            .or(variable_assign_parse(stmt))
             .or(expr)
             .padded_by(just(Token::NewLine).repeated())
     })
