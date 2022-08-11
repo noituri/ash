@@ -14,7 +14,7 @@ pub(super) fn function_parser<'a>(
     let ident = ident_parser();
 
     let name = ident.clone().labelled("function name");
-    let args = ident
+    let params = ident
         .clone()
         .then_ignore(just(Token::Colon))
         .then(ident.clone())
@@ -32,13 +32,13 @@ pub(super) fn function_parser<'a>(
 
     just(Token::Function)
         .ignore_then(name)
-        .then(args.or_not())
+        .then(params.or_not())
         .then(return_type.or_not())
         .then(body)
-        .map(|(((name, args), ty), body)| Stmt::Function {
+        .map(|(((name, params), ty), body)| Stmt::Function {
             name,
             body: Box::new(body),
-            args: args.unwrap_or_default(),
+            params: params.unwrap_or_default(),
             ty: ty.unwrap_or("Void".to_owned()),
         })
         .labelled("function")
@@ -74,7 +74,7 @@ pub(super) fn call_no_parens_parser<'a>(
 }
 
 pub(super) fn return_parser<'a>(
-    stmt: StmtRecursive<'a>
+    stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Stmt, Error = Simple<Token>> + 'a {
     just(Token::Return)
         .ignore_then(stmt_expression_parser(stmt).then_ignore(just(Token::NewLine)))

@@ -1,8 +1,8 @@
 mod common;
-mod expr;
+pub(crate) mod expr;
 mod function;
 mod literal;
 mod operator;
 pub(crate) mod parser;
-mod stmt;
+pub(crate) mod stmt;
 mod variable;

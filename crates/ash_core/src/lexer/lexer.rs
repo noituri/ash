@@ -1,4 +1,4 @@
-use crate::common::{Span, Spanned, SvResult};
+use crate::common::{AshResult, Span, Spanned};
 use crate::lexer::basic::basic_lexer;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
@@ -45,7 +45,7 @@ impl<'a> Lexer<'a> {
         Self(parser.boxed())
     }
 
-    pub fn scan(&self, source: &str) -> SvResult<Vec<Spanned<Token>>, char> {
+    pub fn scan(&self, source: &str) -> AshResult<Vec<Spanned<Token>>, char> {
         let result = self.0.parse(source)?;
         let tokens = Self::flatten_token_trees(result)
             .fetch_tokens()

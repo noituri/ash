@@ -4,14 +4,15 @@ use chumsky::prelude::*;
 use super::{
     common::block_parser,
     expr::{expression_parser, Expr},
-    function::{function_parser, return_parser}, variable::{variable_decl_parse, variable_assign_parse},
+    function::{function_parser, return_parser},
+    variable::{variable_assign_parse, variable_decl_parse},
 };
 
 #[derive(Debug)]
 pub(crate) enum Stmt {
     Function {
         name: String,
-        args: Vec<(String, String)>,
+        params: Vec<(String, String)>,
         body: Box<Stmt>,
         ty: String, // TODO: use Ty enum,
     },
