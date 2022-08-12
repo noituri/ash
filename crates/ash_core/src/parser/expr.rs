@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, ty::Value};
+use crate::{lexer::token::Token, ty::Value, common::{Context, Id, next_id, Spanned}};
 use chumsky::prelude::*;
 
 use super::{
@@ -11,13 +11,13 @@ use super::{
 
 #[derive(Debug)]
 pub(crate) enum Expr {
-    Variable(String),
+    Variable(Id, String),
     Literal(Value),
     Call {
         callee: Box<Expr>,
         args: Vec<Expr>,
     },
-    Block(Vec<Stmt>),
+    Block(Vec<Spanned<Stmt>>),
     Group(Box<Expr>),
     Unary {
         op: UnaryOp,
@@ -34,7 +34,7 @@ pub(super) type ExprRecursive<'a> = Recursive<'a, Token, Expr, Simple<Token>>;
 
 pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
     recursive(|expr| {
-        let variable = ident_parser().debug("VARIABLE EXPR").map(Expr::Variable);
+        let variable = ident_parser().debug("VARIABLE EXPR").map(|name| Expr::Variable(next_id(), name));
         let group = expr
             .clone()
             .delimited_by(just(Token::LParen), just(Token::RParen))

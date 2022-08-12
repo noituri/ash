@@ -4,10 +4,12 @@ use chumsky::error::Simple;
 pub use context::*;
 pub use env::*;
 pub use source::*;
+pub use id::*;
 
 pub mod context;
 pub mod env;
 pub mod source;
+pub mod id;
 
 pub(crate) type Spanned<T> = (T, Span);
 

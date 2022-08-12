@@ -1,4 +1,4 @@
-use crate::lexer::token::Token;
+use crate::{lexer::token::Token, common::{Id, Spanned}};
 use chumsky::prelude::*;
 
 use super::{
@@ -13,7 +13,7 @@ pub(crate) enum Stmt {
     Function {
         name: String,
         params: Vec<(String, String)>,
-        body: Box<Stmt>,
+        body: Box<Spanned<Stmt>>,
         ty: String, // TODO: use Ty enum,
     },
     VariableDecl {
@@ -22,6 +22,7 @@ pub(crate) enum Stmt {
         value: Expr,
     },
     VariableAssign {
+        id: Id,
         name: String,
         value: Expr,
     },
@@ -29,20 +30,20 @@ pub(crate) enum Stmt {
     Expression(Expr),
 }
 
-pub(super) type StmtRecursive<'a> = Recursive<'a, Token, Stmt, Simple<Token>>;
+pub(super) type StmtRecursive<'a> = Recursive<'a, Token, Spanned<Stmt>, Simple<Token>>;
 
-pub(super) fn statement_parser() -> impl Parser<Token, Stmt, Error = Simple<Token>> {
+pub(super) fn statement_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> {
     recursive(|stmt| {
         let expr = expression_parser()
             .then_ignore(just(Token::NewLine))
-            .map(Stmt::Expression);
+            .map_with_span(|expr, span| (Stmt::Expression(expr), span));
 
         function_parser(stmt.clone())
             .or(variable_decl_parse(stmt.clone()))
             .or(variable_assign_parse(stmt.clone()))
             .or(return_parser(stmt))
             .or(expr)
-            .padded_by(just(Token::NewLine).repeated())
+            .padded_by(just(Token::NewLine).repeated()) 
     })
 }
 
