@@ -1,13 +1,16 @@
 use core::fmt;
 
-use crate::common::Spanned;
+use crate::core::Spanned;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Token {
+    At,
     LParen,
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     NewLine,
     Equal,
     DoubleEqual,
@@ -34,10 +37,13 @@ pub(crate) enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tok = match self {
+            Token::At => "@",
             Token::LParen => "(",
             Token::RParen => ")",
             Token::LBrace => "{",
             Token::RBrace => "}",
+            Token::LBracket => "[",
+            Token::RBracket => "]",
             Token::NewLine => "NEWLINE",
             Token::Equal => "=",
             Token::DoubleEqual => "==",

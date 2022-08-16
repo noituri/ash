@@ -1,5 +1,5 @@
 mod ashery;
-mod common;
+mod core;
 mod lexer;
 mod parser;
 pub mod prelude;

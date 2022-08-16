@@ -1,8 +1,8 @@
-use crate::common::Spanned;
+use crate::core::Spanned;
 use crate::parser::stmt::Stmt;
-use crate::ty::function::Function;
+use crate::ty::function::{Function, ProtoFunction};
 use crate::ty::Ty;
-use crate::{common::next_id, lexer::token::Token};
+use crate::{core::next_id, lexer::token::Token};
 use chumsky::prelude::*;
 
 use super::common::type_parser;
@@ -12,9 +12,7 @@ use super::{
     stmt::{stmt_expression_parser, StmtRecursive},
 };
 
-pub(super) fn function_parser<'a>(
-    stmt: StmtRecursive<'a>,
-) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
+pub(super) fn function_proto_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> {
     let ident = ident_parser();
 
     let name = ident.clone().labelled("function name");
@@ -29,17 +27,13 @@ pub(super) fn function_parser<'a>(
     let return_type = just(Token::Colon)
         .ignore_then(type_parser())
         .labelled("function return type");
-    let body = just(Token::Equal)
-        .ignore_then(stmt_expression_parser(stmt))
-        .then_ignore(just(Token::NewLine))
-        .map_with_span(|expr, span| (Stmt::Expression(expr), span));
-
+    
     just(Token::Function)
         .ignore_then(name)
         .then(params.or_not())
         .then(return_type.or_not())
-        .then(body)
-        .map_with_span(|(((name, params), ty), body), span| {
+        .then_ignore(just(Token::NewLine).or_not())
+        .map_with_span(|((name, params), ty), span| {
             let params = params.unwrap_or_default();
             let ty = {
                 let param_types = params.iter().map(|p| p.1.clone()).collect::<Vec<_>>();
@@ -51,13 +45,32 @@ pub(super) fn function_parser<'a>(
                 .into_iter()
                 .map(|(name, ty)| (next_id(), name, ty))
                 .collect::<Vec<_>>();
-
-            let fun = Function {
+            let proto = ProtoFunction {
                 id: next_id(),
                 name,
                 params,
                 ty,
+            };
+
+            (Stmt::ProtoFunction(proto), span)
+        })
+        .labelled("function")
+}
+
+pub(super) fn function_parser<'a>(
+    stmt: StmtRecursive<'a>,
+) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
+    let body = just(Token::Equal)
+        .ignore_then(stmt_expression_parser(stmt))
+        .then_ignore(just(Token::NewLine))
+        .map_with_span(|expr, span| (Stmt::Expression(expr), span));
+
+    function_proto_parser()
+        .then(body)
+        .map_with_span(|(proto, body), span| {
+            let fun = Function {
                 body,
+                proto: (proto.0.proto_fun(), proto.1),
             };
 
             (Stmt::Function(Box::new(fun)), span)

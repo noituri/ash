@@ -3,14 +3,17 @@ use std::collections::HashMap;
 use chumsky::prelude::Simple;
 
 use crate::{
-    common::{Context, Id, Spanned},
+    core::{Context, Id, Spanned},
     parser::{self, operator::BinaryOp},
     prelude::{AshResult, Span},
 };
 
 use crate::ty;
 
-use super::{function::Function, Ty};
+use super::{
+    function::{Function, ProtoFunction},
+    Ty,
+};
 
 pub(crate) struct TypeSystem<'a> {
     context: &'a mut Context,
@@ -45,18 +48,17 @@ impl<'a> TypeSystem<'a> {
 
     fn type_stmt(&mut self, (stmt, span): Spanned<parser::Stmt>) -> Spanned<ty::Stmt> {
         let stmt = match stmt {
+            parser::Stmt::ProtoFunction(proto) => ty::Stmt::ProtoFunction(proto),
             parser::Stmt::Function(fun) => {
                 let body = self.type_stmt(fun.body);
                 // TODO: Handle returns
-                if fun.ty.fun_return_ty() != Ty::Void {
-                    self.check_type(fun.ty.fun_return_ty(), body.0.ty(), span.clone());
+                let ty = &fun.proto.0.ty;
+                if ty.fun_return_ty() != Ty::Void {
+                    self.check_type(ty.fun_return_ty(), body.0.ty(), span.clone());
                 }
                 let fun = Function {
-                    id: fun.id,
-                    name: fun.name,
-                    params: fun.params,
-                    ty: fun.ty,
                     body,
+                    proto: fun.proto,
                 };
 
                 ty::Stmt::Function(Box::new(fun))
@@ -104,6 +106,7 @@ impl<'a> TypeSystem<'a> {
 
                 ty::Stmt::Expression(expr, ty)
             }
+            parser::Stmt::Annotation(a, stmt) => ty::Stmt::Annotation(a, Box::new(self.type_stmt(*stmt))), 
         };
 
         (stmt, span)
@@ -115,13 +118,13 @@ impl<'a> TypeSystem<'a> {
                 let ty = self.context.var_type_at(id);
                 if !self.parsing_call && matches!(ty, Ty::Fun(_, _)) {
                     // Promotes var to call
-                    self.type_call(false, parser::Expr::Variable(id, name), Vec::new(), span)
+                    self.type_call(parser::Expr::Variable(id, name), Vec::new(), span)
                 } else {
                     ty::Expr::Variable(id, name, ty)
                 }
             }
             parser::Expr::Literal(value) => ty::Expr::Literal(value),
-            parser::Expr::Call { callee, args } => self.type_call(false, *callee, args, span),
+            parser::Expr::Call { callee, args } => self.type_call(*callee, args, span),
             parser::Expr::Block(statements) => {
                 let statements = statements
                     .into_iter()
@@ -184,16 +187,11 @@ impl<'a> TypeSystem<'a> {
         }
     }
 
-    fn type_call(
-        &mut self,
-        callee: parser::Expr,
-        args: Vec<parser::Expr>,
-        span: Span,
-    ) -> ty::Expr {
+    fn type_call(&mut self, callee: parser::Expr, args: Vec<parser::Expr>, span: Span) -> ty::Expr {
         self.parsing_call = true;
         let callee = self.type_expr(callee, span.clone());
         self.parsing_call = false;
-        
+
         let fun_ty = callee.ty();
         if let Ty::Fun(params, return_ty) = fun_ty {
             // TODO: Build proper checking system

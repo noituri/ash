@@ -5,11 +5,13 @@ pub use context::*;
 pub use env::*;
 pub use source::*;
 pub use id::*;
+pub use annotation::*;
 
 pub mod context;
 pub mod env;
 pub mod source;
 pub mod id;
+pub mod annotation;
 
 pub(crate) type Spanned<T> = (T, Span);
 

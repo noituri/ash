@@ -1,4 +1,4 @@
-use crate::common::{AshResult, Span, Spanned};
+use crate::core::{AshResult, Span, Spanned};
 use crate::lexer::basic::basic_lexer;
 use crate::lexer::keyword::keyword_lexer;
 use crate::lexer::numeric::numeric_lexer;
@@ -81,7 +81,11 @@ impl<'a> Lexer<'a> {
                     .chain(tt.into_iter())
                     .chain(once((Token::RParen.to_tree(), span_at(span.end - 1)))),
             ),
-            TokenTree::Tree(_, _) => unimplemented!(),
+            TokenTree::Tree(Delim::Bracket, tt) => Flat::Many(
+                once((Token::LBracket.to_tree(), span_at(span.start)))
+                    .chain(tt.into_iter())
+                    .chain(once((Token::RBracket.to_tree(), span_at(span.end - 1)))),
+            ),
         })
     }
 }

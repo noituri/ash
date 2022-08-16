@@ -43,7 +43,6 @@ impl Context {
     }
 
     pub(crate) fn var_type_at(&self, id: Id) -> Ty {
-        dbg!(self.locals.get(&id));
         let local = self.locals.get(&id).unwrap();
         match local.ty.clone() {
             Some(ty) => ty,

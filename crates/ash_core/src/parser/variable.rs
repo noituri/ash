@@ -1,6 +1,6 @@
 use chumsky::prelude::*;
 
-use crate::{lexer::token::Token, common::{next_id, Spanned}};
+use crate::{lexer::token::Token, core::{next_id, Spanned}};
 
 use super::{
     common::{ident_parser, type_parser},

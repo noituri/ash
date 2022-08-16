@@ -1,9 +1,11 @@
-use crate::{common::{Id, Spanned}, parser::operator::{UnaryOp, BinaryOp}};
+use crate::{core::{Id, Spanned, Annotation}, parser::operator::{UnaryOp, BinaryOp}};
 
-use super::{function::Function, ty::Ty, Value};
+use super::{function::{Function, ProtoFunction}, ty::Ty, Value};
 
 #[derive(Debug)]
 pub(crate) enum Stmt {
+    Annotation(Spanned<Annotation>, Box<Spanned<Stmt>>),
+    ProtoFunction(ProtoFunction),
     Function(Box<Function<Stmt>>),
     VariableDecl {
         id: Id,
@@ -23,7 +25,9 @@ pub(crate) enum Stmt {
 impl Stmt {
     pub(crate) fn ty(&self) -> Ty {
         match self {
-            Self::Function(fun) => fun.ty.clone(),
+            Self::Annotation(_, stmt) => stmt.0.ty(),
+            Self::ProtoFunction(proto) => proto.ty.clone(),
+            Self::Function(fun) => fun.proto.0.ty.clone(),
             Self::VariableDecl { ty, .. } => ty.clone(),
             Self::VariableAssign { value, .. } => value.ty(),
             Self::Return(_, ty) => ty.clone(),

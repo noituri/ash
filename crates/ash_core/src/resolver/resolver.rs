@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chumsky::prelude::Simple;
 
 use crate::{
-    common::{Context, Id, Spanned},
+    core::{Context, Id, Spanned},
     parser::{expr::Expr, stmt::Stmt},
     prelude::{AshResult, Span},
     ty::{FunctionType, Ty},
@@ -13,7 +13,7 @@ pub(crate) type Scope = HashMap<String, VarData>;
 
 #[derive(Debug)]
 pub(crate) struct VarData {
-    id: Option<Id>,
+    id: Id,
     is_defined: bool,
     ty: Option<Ty>,
 }
@@ -27,15 +27,16 @@ pub(crate) struct Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(context: &'a mut Context) -> Self {
-        let global_scope = context
-            .get_env()
-            .typed_names()
-            .into_iter()
-            .map(|(n, t)| (n, VarData {
-                id: None, // FIXME: builtin IDs
-                is_defined: true,
-                ty: Some(t),
-            }));
+        // let global_scope = context
+        //     .get_env()
+        //     .typed_names()
+        //     .into_iter()
+        //     .map(|(n, t)| (n, VarData {
+        //         id: None, // FIXME: builtin IDs
+        //         is_defined: true,
+        //         ty: Some(t),
+        //     }));
+        let global_scope = Vec::new();
 
         Self {
             context,
@@ -64,16 +65,27 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_root(&mut self, statements: &'a [Spanned<Stmt>]) {
-        for (stmt, span) in statements {
-            match stmt {
-                Stmt::Function(fun) => {
-                    self.declare(fun.name.clone(), Some(fun.id), Some(fun.ty.clone()));
-                    self.define(fun.name.clone());
-                }
-                Stmt::VariableDecl { id, name, ty, value } => self.declare(name.clone(), Some(*id), ty.clone()),
-                _ => {}
-            }
+        for stmt in statements {
+            self.resolve_root_stmt(stmt)
         }
+    }
+
+    fn resolve_root_stmt(&mut self, (stmt, span): &'a Spanned<Stmt>) {
+        match stmt {
+            Stmt::Annotation(_, stmt) => {
+                self.resolve_root_stmt(stmt);
+            }
+            Stmt::ProtoFunction(proto) => {
+                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.define(proto.name.clone());
+            }
+            Stmt::Function(fun) => {
+                let (proto, _) = &fun.proto;
+                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.define(proto.name.clone());
+            }
+            _ => self.new_error("This statement can not be used in the root scope", span.clone())
+        };
     }
 
     fn resolve_statements(&mut self, statements: &'a [Spanned<Stmt>]) {
@@ -84,9 +96,20 @@ impl<'a> Resolver<'a> {
 
     fn resolve_stmt(&mut self, (stmt, span): &'a Spanned<Stmt>) {
         match stmt {
+            Stmt::Annotation((a, span), stmt) => {
+                if !a.is_builtin() {
+                    self.new_error("Unknown annotation", span.clone())
+                }
+                self.resolve_stmt(stmt);
+            }
             Stmt::Expression(expr) => self.resolve_expr(expr, span),
-            Stmt::VariableDecl { id, name, value, ty } => {
-                self.declare(name.clone(), Some(*id), ty.clone());
+            Stmt::VariableDecl {
+                id,
+                name,
+                value,
+                ty,
+            } => {
+                self.declare(name.clone(), *id, ty.clone());
                 self.resolve_expr(value, span);
                 self.define(name.clone())
             }
@@ -95,9 +118,14 @@ impl<'a> Resolver<'a> {
                 let (name, span) = name;
                 self.resolve_local(*id, name, span.clone());
             }
+            Stmt::ProtoFunction(proto) => {
+                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.define(proto.name.clone());
+            }
             Stmt::Function(fun) => {
-                self.declare(fun.name.clone(), Some(fun.id), Some(fun.ty.clone()));
-                self.define(fun.name.clone());
+                let (proto, _) = &fun.proto;
+                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.define(proto.name.clone());
 
                 let prev = self.current_function;
                 self.current_function = Some(FunctionType::Function);
@@ -105,8 +133,8 @@ impl<'a> Resolver<'a> {
                 {
                     self.enter_scope();
 
-                    for (id, param, ty) in fun.params.iter() {
-                        self.declare(param.clone(), Some(*id), Some(ty.clone()));
+                    for (id, param, ty) in proto.params.iter() {
+                        self.declare(param.clone(), *id, Some(ty.clone()));
                         self.define(param.clone());
                     }
                     self.resolve_stmt(&fun.body);
@@ -160,9 +188,7 @@ impl<'a> Resolver<'a> {
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
         for (depth, scope) in self.scopes.iter().enumerate() {
             if let Some(data) = scope.get(name) {
-                dbg!(name);
-                dbg!(data);
-                self.context.resolve(id, depth, data.ty.clone(), data.id.unwrap());
+                self.context.resolve(id, depth, data.ty.clone(), data.id);
                 return;
             }
         }
@@ -176,13 +202,16 @@ impl<'a> Resolver<'a> {
         self.leave_scope();
     }
 
-    fn declare(&mut self, name: String, id: Option<Id>, ty: Option<Ty>) {
+    fn declare(&mut self, name: String, id: Id, ty: Option<Ty>) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name, VarData {
-                id,
-                ty,
-                is_defined: false
-            });
+            scope.insert(
+                name,
+                VarData {
+                    id,
+                    ty,
+                    is_defined: false,
+                },
+            );
         }
     }
 
