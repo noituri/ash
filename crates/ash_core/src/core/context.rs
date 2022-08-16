@@ -58,21 +58,27 @@ impl Context {
     }
 
     pub(crate) fn new_var(&mut self, id: Id, ty: Ty) {
-        self.locals.insert(id, Local {
+        self.locals.insert(
             id,
-            ty: Some(ty),
-            depth: 0,
-            points_to: None,
-        });
+            Local {
+                id,
+                ty: Some(ty),
+                depth: 0,
+                points_to: None,
+            },
+        );
     }
 
     // TODO: storing depth might not be needed at this stage
     pub(crate) fn resolve(&mut self, id: Id, depth: usize, ty: Option<Ty>, points_to: Id) {
-        self.locals.insert(id, Local {
+        self.locals.insert(
             id,
-            depth,
-            ty,
-            points_to: Some(points_to)
-        });
+            Local {
+                id,
+                depth,
+                ty,
+                points_to: Some(points_to),
+            },
+        );
     }
 }

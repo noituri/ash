@@ -84,7 +84,10 @@ impl<'a> Resolver<'a> {
                 self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
-            _ => self.new_error("This statement can not be used in the root scope", span.clone())
+            _ => self.new_error(
+                "This statement can not be used in the root scope",
+                span.clone(),
+            ),
         };
     }
 

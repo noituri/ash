@@ -1,6 +1,9 @@
 use chumsky::prelude::*;
 
-use crate::{lexer::token::Token, core::{next_id, Spanned}};
+use crate::{
+    core::{next_id, Spanned},
+    lexer::token::Token,
+};
 
 use super::{
     common::{ident_parser, type_parser},
@@ -15,7 +18,17 @@ pub(super) fn variable_decl_parse<'a>(
         .then(just(Token::Colon).ignore_then(type_parser()).or_not())
         .then_ignore(just(Token::Equal))
         .then(stmt_expression_parser(stmt).then_ignore(just(Token::NewLine)))
-        .map_with_span(|((name, ty), value), span| (Stmt::VariableDecl { id: next_id(), name, ty, value }, span))
+        .map_with_span(|((name, ty), value), span| {
+            (
+                Stmt::VariableDecl {
+                    id: next_id(),
+                    name,
+                    ty,
+                    value,
+                },
+                span,
+            )
+        })
 }
 
 pub(super) fn variable_assign_parse<'a>(
@@ -25,5 +38,14 @@ pub(super) fn variable_assign_parse<'a>(
         .map_with_span(|name, span| (name, span))
         .then_ignore(just(Token::Equal))
         .then(stmt_expression_parser(stmt).then_ignore(just(Token::NewLine)))
-        .map_with_span(|(name, value), span| (Stmt::VariableAssign { id: next_id(), name, value }, span))
+        .map_with_span(|(name, value), span| {
+            (
+                Stmt::VariableAssign {
+                    id: next_id(),
+                    name,
+                    value,
+                },
+                span,
+            )
+        })
 }

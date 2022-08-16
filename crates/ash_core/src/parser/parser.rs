@@ -1,7 +1,7 @@
 use crate::{core::Spanned, lexer::token::Token, prelude::AshResult};
 use chumsky::{prelude::*, Parser as ChumskyParser, Stream};
 
-use super::{stmt::{statement_parser, Stmt}};
+use super::stmt::{statement_parser, Stmt};
 
 pub(crate) struct Parser<'a>(BoxedParser<'a, Token, Vec<Spanned<Stmt>>, Simple<Token>>);
 

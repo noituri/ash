@@ -1,17 +1,17 @@
 use std::{fmt, hash::Hash};
 
+pub use annotation::*;
 use chumsky::error::Simple;
 pub use context::*;
 pub use env::*;
-pub use source::*;
 pub use id::*;
-pub use annotation::*;
+pub use source::*;
 
+pub mod annotation;
 pub mod context;
 pub mod env;
-pub mod source;
 pub mod id;
-pub mod annotation;
+pub mod source;
 
 pub(crate) type Spanned<T> = (T, Span);
 

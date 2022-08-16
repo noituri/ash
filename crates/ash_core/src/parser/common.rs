@@ -45,5 +45,5 @@ pub(super) fn block_parser<'a>(
 }
 
 pub(super) fn type_parser() -> impl Parser<Token, Ty, Error = Simple<Token>> {
-   ident_parser().map::<Ty, _>(From::from) 
+    ident_parser().map::<Ty, _>(From::from)
 }

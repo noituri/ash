@@ -1,6 +1,7 @@
-pub use stmt::*;
 pub use expr::*;
+pub use stmt::*;
 
+mod annotation;
 mod common;
 pub(crate) mod expr;
 mod function;
@@ -9,4 +10,3 @@ pub(crate) mod operator;
 pub(crate) mod parser;
 pub(crate) mod stmt;
 mod variable;
-mod annotation;

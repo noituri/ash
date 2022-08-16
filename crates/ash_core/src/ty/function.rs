@@ -1,4 +1,4 @@
-use crate::core::{Spanned, Id};
+use crate::core::{Id, Spanned};
 
 use super::Ty;
 

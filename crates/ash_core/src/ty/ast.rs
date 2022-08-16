@@ -1,6 +1,13 @@
-use crate::{core::{Id, Spanned, Annotation}, parser::operator::{UnaryOp, BinaryOp}};
+use crate::{
+    core::{Annotation, Id, Spanned},
+    parser::operator::{BinaryOp, UnaryOp},
+};
 
-use super::{function::{Function, ProtoFunction}, ty::Ty, Value};
+use super::{
+    function::{Function, ProtoFunction},
+    ty::Ty,
+    Value,
+};
 
 #[derive(Debug)]
 pub(crate) enum Stmt {
@@ -19,7 +26,7 @@ pub(crate) enum Stmt {
         value: Expr,
     },
     Return(Expr, Ty),
-    Expression(Expr, Ty)
+    Expression(Expr, Ty),
 }
 
 impl Stmt {
@@ -57,7 +64,7 @@ pub(crate) enum Expr {
         op: BinaryOp,
         right: Box<Expr>,
         ty: Ty,
-    }
+    },
 }
 
 impl Expr {

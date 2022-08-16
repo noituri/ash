@@ -4,7 +4,11 @@ use crate::{
 };
 use chumsky::prelude::*;
 
-use super::{common::ident_parser, function::{function_parser, function_proto_parser}, Stmt, StmtRecursive};
+use super::{
+    common::ident_parser,
+    function::{function_parser, function_proto_parser},
+    Stmt, StmtRecursive,
+};
 
 pub(super) fn annotation_parser<'a>(
     stmt: StmtRecursive<'a>,

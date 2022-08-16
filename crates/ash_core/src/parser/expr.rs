@@ -1,4 +1,8 @@
-use crate::{lexer::token::Token, ty::Value, core::{Context, Id, next_id, Spanned}};
+use crate::{
+    core::{next_id, Id, Spanned},
+    lexer::token::Token,
+    ty::Value,
+};
 use chumsky::prelude::*;
 
 use super::{
@@ -34,7 +38,9 @@ pub(super) type ExprRecursive<'a> = Recursive<'a, Token, Expr, Simple<Token>>;
 
 pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
     recursive(|expr| {
-        let variable = ident_parser().debug("VARIABLE EXPR").map(|name| Expr::Variable(next_id(), name));
+        let variable = ident_parser()
+            .debug("VARIABLE EXPR")
+            .map(|name| Expr::Variable(next_id(), name));
         let group = expr
             .clone()
             .delimited_by(just(Token::LParen), just(Token::RParen))

@@ -8,7 +8,7 @@ pub(crate) enum Ty {
     I32,
     F64,
     Void,
-    Fun(Vec<Ty>, Box<Ty>)
+    Fun(Vec<Ty>, Box<Ty>),
 }
 
 impl Default for Ty {
@@ -19,14 +19,14 @@ impl Default for Ty {
 
 impl From<String> for Ty {
     fn from(s: String) -> Self {
-       match s.as_str() {
+        match s.as_str() {
             "String" => Self::String,
             "Bool" => Self::Bool,
             "I32" => Self::I32,
             "F64" => Self::F64,
             "Void" => Self::F64,
-            _ => todo!("Implement custom types")
-       } 
+            _ => todo!("Implement custom types"),
+        }
     }
 }
 
@@ -51,7 +51,7 @@ impl Ty {
     pub fn fun_return_ty(&self) -> Self {
         match self {
             Self::Fun(_, ty) => *ty.clone(),
-            _ => panic!("Used fun_return_ty() not on a function")
+            _ => panic!("Used fun_return_ty() not on a function"),
         }
     }
 }

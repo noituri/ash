@@ -1,19 +1,14 @@
-use std::collections::HashMap;
-
 use chumsky::prelude::Simple;
 
 use crate::{
-    core::{Context, Id, Spanned},
+    core::{Context, Spanned},
     parser::{self, operator::BinaryOp},
     prelude::{AshResult, Span},
 };
 
 use crate::ty;
 
-use super::{
-    function::{Function, ProtoFunction},
-    Ty,
-};
+use super::{function::Function, Ty};
 
 pub(crate) struct TypeSystem<'a> {
     context: &'a mut Context,
@@ -106,7 +101,9 @@ impl<'a> TypeSystem<'a> {
 
                 ty::Stmt::Expression(expr, ty)
             }
-            parser::Stmt::Annotation(a, stmt) => ty::Stmt::Annotation(a, Box::new(self.type_stmt(*stmt))), 
+            parser::Stmt::Annotation(a, stmt) => {
+                ty::Stmt::Annotation(a, Box::new(self.type_stmt(*stmt)))
+            }
         };
 
         (stmt, span)
@@ -161,7 +158,7 @@ impl<'a> TypeSystem<'a> {
                 if self.check_type(left.ty(), right.ty(), span.clone()) {
                     // TODO: Better implementation
                     let numeric_ops = &[BinaryOp::Div, BinaryOp::Mod, BinaryOp::Mul, BinaryOp::Sum];
-                    let other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
+                    let _other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
                     let num_string_ops = &[BinaryOp::Sum];
 
                     let expected_ty =

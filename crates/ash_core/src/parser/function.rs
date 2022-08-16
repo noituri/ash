@@ -27,7 +27,7 @@ pub(super) fn function_proto_parser() -> impl Parser<Token, Spanned<Stmt>, Error
     let return_type = just(Token::Colon)
         .ignore_then(type_parser())
         .labelled("function return type");
-    
+
     just(Token::Function)
         .ignore_then(name)
         .then(params.or_not())
