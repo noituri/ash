@@ -2,6 +2,7 @@ use crate::common::{AshResult, Source, StringError, Context};
 use crate::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::resolver::Resolver;
+use crate::ty::TypeSystem;
 
 pub fn build(source: &Source) -> AshResult<(), String> {
     let lexer = Lexer::new();
@@ -10,9 +11,12 @@ pub fn build(source: &Source) -> AshResult<(), String> {
     let ast = parser.parse(tokens).string_err()?;
     dbg!(&ast);
     let mut context = Context::new();
-    let mut resolver = Resolver::new(&mut context);
-    resolver.run(&ast)?;
 
+    let resolver = Resolver::new(&mut context);
+    resolver.run(&ast)?;
+    let type_system = TypeSystem::new(&mut context);
+    let typed_ast = type_system.run(ast)?;
+    dbg!(&typed_ast);
     Ok(())
 }
 

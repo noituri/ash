@@ -3,37 +3,53 @@ use std::collections::HashMap;
 use chumsky::prelude::Simple;
 
 use crate::{
-    common::{Context, Spanned, Id},
-    parser::{stmt::Stmt, expr::Expr},
-    ty::FunctionType, prelude::{AshResult, Span},
+    common::{Context, Id, Spanned},
+    parser::{expr::Expr, stmt::Stmt},
+    prelude::{AshResult, Span},
+    ty::{FunctionType, Ty},
 };
 
-pub(crate) type Scope = HashMap<String, bool>;
+pub(crate) type Scope = HashMap<String, VarData>;
+
+#[derive(Debug)]
+pub(crate) struct VarData {
+    id: Option<Id>,
+    is_defined: bool,
+    ty: Option<Ty>,
+}
 
 pub(crate) struct Resolver<'a> {
     context: &'a mut Context,
     scopes: Vec<Scope>,
     current_function: Option<FunctionType>,
-    errors: Vec<Simple<String>>
+    errors: Vec<Simple<String>>,
 }
 
 impl<'a> Resolver<'a> {
     pub fn new(context: &'a mut Context) -> Self {
-        let global_scope = context.get_env().names().into_iter().map(|n| (n, true));
+        let global_scope = context
+            .get_env()
+            .typed_names()
+            .into_iter()
+            .map(|(n, t)| (n, VarData {
+                id: None, // FIXME: builtin IDs
+                is_defined: true,
+                ty: Some(t),
+            }));
 
         Self {
             context,
             scopes: vec![Scope::from_iter(global_scope)],
             current_function: None,
-            errors: Vec::new()
+            errors: Vec::new(),
         }
     }
 
-    pub fn run(&mut self, statements: &'a [Spanned<Stmt>]) -> AshResult<(), String> {
+    pub fn run(mut self, statements: &'a [Spanned<Stmt>]) -> AshResult<(), String> {
         self.resolve_root(statements);
         self.resolve_statements(statements);
         if !self.errors.is_empty() {
-            return Err(self.errors.clone())
+            return Err(self.errors);
         }
 
         Ok(())
@@ -50,11 +66,11 @@ impl<'a> Resolver<'a> {
     fn resolve_root(&mut self, statements: &'a [Spanned<Stmt>]) {
         for (stmt, span) in statements {
             match stmt {
-                Stmt::Function { name, .. } => {
-                    self.declare(name.clone());
-                    self.define(name.clone());
+                Stmt::Function(fun) => {
+                    self.declare(fun.name.clone(), Some(fun.id), Some(fun.ty.clone()));
+                    self.define(fun.name.clone());
                 }
-                Stmt::VariableDecl { name, .. } => self.declare(name.clone()),
+                Stmt::VariableDecl { id, name, ty, value } => self.declare(name.clone(), Some(*id), ty.clone()),
                 _ => {}
             }
         }
@@ -69,18 +85,19 @@ impl<'a> Resolver<'a> {
     fn resolve_stmt(&mut self, (stmt, span): &'a Spanned<Stmt>) {
         match stmt {
             Stmt::Expression(expr) => self.resolve_expr(expr, span),
-            Stmt::VariableDecl { name, value, .. } => {
-                self.declare(name.clone());
+            Stmt::VariableDecl { id, name, value, ty } => {
+                self.declare(name.clone(), Some(*id), ty.clone());
                 self.resolve_expr(value, span);
                 self.define(name.clone())
             }
             Stmt::VariableAssign { id, name, value } => {
                 self.resolve_expr(value, span);
+                let (name, span) = name;
                 self.resolve_local(*id, name, span.clone());
             }
-            Stmt::Function { name, params, body, ty } => {
-                self.declare(name.clone());
-                self.define(name.clone());
+            Stmt::Function(fun) => {
+                self.declare(fun.name.clone(), Some(fun.id), Some(fun.ty.clone()));
+                self.define(fun.name.clone());
 
                 let prev = self.current_function;
                 self.current_function = Some(FunctionType::Function);
@@ -88,11 +105,11 @@ impl<'a> Resolver<'a> {
                 {
                     self.enter_scope();
 
-                    for (param, _ty) in params {
-                        self.declare(param.clone());
+                    for (id, param, ty) in fun.params.iter() {
+                        self.declare(param.clone(), Some(*id), Some(ty.clone()));
                         self.define(param.clone());
                     }
-                    self.resolve_stmt(body);
+                    self.resolve_stmt(&fun.body);
 
                     self.leave_scope();
                 }
@@ -112,12 +129,16 @@ impl<'a> Resolver<'a> {
     fn resolve_expr(&mut self, expr: &'a Expr, span: &'a Span) {
         match expr {
             Expr::Variable(id, name) => {
-                if self.scopes.last().unwrap().get(name) == Some(&false) {
-                   self.new_error("Use of variable in its own initializer is forbidden", span.clone());
+                let v = self.scopes.last().unwrap().get(name).map(|v| v.is_defined);
+                if v == Some(false) {
+                    self.new_error(
+                        "Use of variable in its own initializer is forbidden",
+                        span.clone(),
+                    );
                 }
 
                 self.resolve_local(*id, name, span.clone())
-            },
+            }
             Expr::Binary { left, right, .. } => {
                 self.resolve_expr(left, span);
                 self.resolve_expr(right, span);
@@ -138,8 +159,10 @@ impl<'a> Resolver<'a> {
 
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
         for (depth, scope) in self.scopes.iter().enumerate() {
-            if scope.contains_key(name) {
-                self.context.resolve(id, depth);
+            if let Some(data) = scope.get(name) {
+                dbg!(name);
+                dbg!(data);
+                self.context.resolve(id, depth, data.ty.clone(), data.id.unwrap());
                 return;
             }
         }
@@ -153,15 +176,19 @@ impl<'a> Resolver<'a> {
         self.leave_scope();
     }
 
-    fn declare(&mut self, name: String) {
+    fn declare(&mut self, name: String, id: Option<Id>, ty: Option<Ty>) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name, false);
+            scope.insert(name, VarData {
+                id,
+                ty,
+                is_defined: false
+            });
         }
     }
 
     fn define(&mut self, name: String) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name, true);
+            scope.get_mut(&name).unwrap().is_defined = true;
         }
     }
 

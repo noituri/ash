@@ -9,7 +9,7 @@ use super::{
     stmt::Stmt,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Expr {
     Variable(Id, String),
     Literal(Value),

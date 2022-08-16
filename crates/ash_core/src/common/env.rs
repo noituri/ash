@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use chumsky::prelude::Simple;
 
-use crate::ty::Value;
+use crate::ty::{Ty, Value};
 
 use super::{AshResult, Spanned};
 
@@ -48,24 +48,29 @@ impl Env {
         self.ancestor(distance).assign(name, value).unwrap()
     }
 
-    pub fn get(&self, name: &str) -> Option<Value> {
+    fn get(&self, name: &str) -> Option<Value> {
         let inner = self.0.borrow();
-        let value = inner.variables.get(name).cloned();
+        let value = inner.variables.get(name);
         if value.is_none() {
             if let Some(outer) = &inner.outer {
                 return outer.get(name);
             }
         }
 
-        value
+        value.cloned()
     }
 
     pub fn get_at(&self, name: &str, distance: usize) -> Value {
         self.ancestor(distance).get(name).unwrap()
     }
 
-    pub fn names(&self) -> Vec<String> {
-        self.0.borrow().variables.keys().cloned().collect()
+    pub(crate) fn typed_names(&self) -> Vec<(String, Ty)> {
+        self.0
+            .borrow()
+            .variables
+            .iter()
+            .map(|(k, v)| (k.clone(), v.ty()))
+            .collect::<Vec<_>>()
     }
 
     fn ancestor(&self, distance: usize) -> Self {

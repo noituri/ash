@@ -4,12 +4,12 @@ use crate::lexer::token::Token;
 
 use super::expr::Expr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum UnaryOp {
     Neg,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum BinaryOp {
     Sum,
     Sub,

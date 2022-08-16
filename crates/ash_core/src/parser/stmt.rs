@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, common::{Id, Spanned}};
+use crate::{lexer::token::Token, common::{Id, Spanned}, ty::{function::Function, Ty}};
 use chumsky::prelude::*;
 
 use super::{
@@ -8,22 +8,18 @@ use super::{
     variable::{variable_assign_parse, variable_decl_parse},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Stmt {
-    Function {
-        name: String,
-        params: Vec<(String, String)>,
-        body: Box<Spanned<Stmt>>,
-        ty: String, // TODO: use Ty enum,
-    },
+    Function(Box<Function<Stmt>>),
     VariableDecl {
+        id: Id,
         name: String,
-        ty: Option<String>, // TODO: use Ty enum
+        ty: Option<Ty>,
         value: Expr,
     },
     VariableAssign {
         id: Id,
-        name: String,
+        name: Spanned<String>,
         value: Expr,
     },
     Return(Expr),

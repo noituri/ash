@@ -1,4 +1,4 @@
-use crate::lexer::token::Token;
+use crate::{lexer::token::Token, ty::Ty};
 use chumsky::prelude::*;
 
 use super::{expr::Expr, stmt::StmtRecursive};
@@ -42,4 +42,8 @@ pub(super) fn block_parser<'a>(
         .ignore_then(stmt.repeated())
         .then_ignore(just(Token::RBrace))
         .map(Expr::Block)
+}
+
+pub(super) fn type_parser() -> impl Parser<Token, Ty, Error = Simple<Token>> {
+   ident_parser().map::<Ty, _>(From::from) 
 }
