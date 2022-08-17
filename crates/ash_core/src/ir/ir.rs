@@ -1,6 +1,5 @@
 use crate::{
     core::Spanned,
-    prelude::AshResult,
     ty::{function::Function, Expr, Stmt, Ty},
 };
 
