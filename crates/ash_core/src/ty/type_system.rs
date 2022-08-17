@@ -46,10 +46,18 @@ impl<'a> TypeSystem<'a> {
             parser::Stmt::ProtoFunction(proto) => ty::Stmt::ProtoFunction(proto),
             parser::Stmt::Function(fun) => {
                 let body = self.type_stmt(fun.body);
-                // TODO: Handle returns
                 let ty = &fun.proto.0.ty;
                 if ty.fun_return_ty() != Ty::Void {
-                    self.check_type(ty.fun_return_ty(), body.0.ty(), span.clone());
+                    let body_ty = match &body.0 {
+                        ty::Stmt::Expression(ty::Expr::Block(statements, _), Ty::Void) => {
+                            match statements.last() {
+                                Some((ty::Stmt::Return(_, ty), _)) => ty.clone(),
+                                _ => Ty::Void,
+                            }
+                        }
+                        stmt => stmt.ty(),
+                    };
+                    self.check_type(ty.fun_return_ty(), body_ty, span.clone());
                 }
                 let fun = Function {
                     body,

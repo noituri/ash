@@ -11,6 +11,4 @@ fun main = {
     }
 }
 
-fun sum(a: I32, b: I32): I32 = {
-    a + b
-}
+fun sum(a: I32, b: I32): I32 = a + b

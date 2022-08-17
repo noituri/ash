@@ -41,6 +41,13 @@ impl Stmt {
             Self::Expression(_, ty) => ty.clone(),
         }
     }
+
+    pub fn to_expr(self) -> Expr {
+        match self {
+            Self::Expression(expr, _) => expr,
+            _ => panic!("Not an expression: {:?}", self),
+        }
+    }
 }
 
 #[derive(Debug)]
