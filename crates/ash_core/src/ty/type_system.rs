@@ -44,7 +44,8 @@ impl<'a> TypeSystem<'a> {
     fn type_stmt(&mut self, (stmt, span): Spanned<parser::Stmt>) -> Spanned<ty::Stmt> {
         let stmt = match stmt {
             parser::Stmt::ProtoFunction(proto) => {
-                self.context.new_var(proto.id, proto.name.clone(), proto.ty.clone());
+                self.context
+                    .new_var(proto.id, proto.name.clone(), proto.ty.clone());
                 ty::Stmt::ProtoFunction(proto)
             }
             parser::Stmt::Function(fun) => {
@@ -64,11 +65,12 @@ impl<'a> TypeSystem<'a> {
                     self.check_type(ty.fun_return_ty(), body_ty, span.clone());
                 }
 
-                self.context.new_var(proto.id, proto.name.clone(), ty.clone());
+                self.context
+                    .new_var(proto.id, proto.name.clone(), ty.clone());
                 for (id, name, ty) in proto.params.iter() {
                     self.context.new_var(*id, name.clone(), ty.clone());
                 }
-                
+
                 let fun = Function {
                     body,
                     proto: fun.proto,

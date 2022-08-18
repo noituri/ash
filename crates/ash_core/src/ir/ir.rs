@@ -18,7 +18,7 @@ impl Rest {
         match self {
             Self::InsertAfter(v) => v,
             Self::InsertBefore(v) => v,
-            Self::None => Vec::new()
+            Self::None => Vec::new(),
         }
     }
 }
@@ -184,7 +184,12 @@ impl<'a> IR<'a> {
 
                 DesugaredAst::new(unary, expr.rest)
             }
-            Expr::Binary { left, op, right, ty } => {
+            Expr::Binary {
+                left,
+                op,
+                right,
+                ty,
+            } => {
                 let l_expr = self.desugar_expr(*left);
                 let r_expr = self.desugar_expr(*right);
                 let left = Box::new(l_expr.returns.unwrap());
@@ -197,8 +202,13 @@ impl<'a> IR<'a> {
 
                     Rest::InsertBefore(left)
                 };
-                let binary = Expr::Binary { left, op, right, ty };
-               
+                let binary = Expr::Binary {
+                    left,
+                    op,
+                    right,
+                    ty,
+                };
+
                 DesugaredAst::new(binary, rest)
             }
             Expr::Literal(_) => DesugaredAst::returns(expr),
@@ -207,18 +217,21 @@ impl<'a> IR<'a> {
                 let callee = Box::new(callee_expr.returns.unwrap());
 
                 let mut rest = callee_expr.rest.ignore_direction();
-                let args = args.into_iter().map(|a| {
-                    let a = self.desugar_expr(a);
-                    let mut arg_rest = a.rest.ignore_direction();
-                    rest.append(&mut arg_rest);
+                let args = args
+                    .into_iter()
+                    .map(|a| {
+                        let a = self.desugar_expr(a);
+                        let mut arg_rest = a.rest.ignore_direction();
+                        rest.append(&mut arg_rest);
 
-                    a.returns.unwrap()
-                }).collect::<Vec<_>>();
-               
+                        a.returns.unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
                 // TODO: Needs testing
-                let rest = Rest::InsertBefore(rest); 
+                let rest = Rest::InsertBefore(rest);
                 let call = Expr::Call { callee, args, ty };
-                
+
                 DesugaredAst::new(call, rest)
             }
             _ => DesugaredAst::returns(expr),
