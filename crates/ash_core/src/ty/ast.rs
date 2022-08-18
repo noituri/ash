@@ -25,6 +25,8 @@ pub(crate) enum Stmt {
         name: Spanned<String>,
         value: Expr,
     },
+    // TODO:
+    // If(If), When used as statement
     Return(Expr, Ty),
     Expression(Expr, Ty),
 }

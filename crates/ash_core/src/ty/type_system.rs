@@ -82,7 +82,7 @@ impl<'a> TypeSystem<'a> {
                 };
 
                 // TODO: types might need to be pre evaluated first
-                self.context.new_var(id, ty.clone());
+                self.context.new_var(id, name.clone(), ty.clone());
                 ty::Stmt::VariableDecl {
                     id,
                     name,

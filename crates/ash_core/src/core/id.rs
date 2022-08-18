@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{cell::Cell, sync::Mutex};
 
 use once_cell::sync::OnceCell;
@@ -25,6 +26,12 @@ impl IdPool {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub(crate) struct Id(usize);
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0.to_string())
+    }
+}
 
 impl Id {
     pub fn new(id: usize) -> Self {

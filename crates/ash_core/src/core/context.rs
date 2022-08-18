@@ -10,11 +10,12 @@ pub struct Context {
 }
 
 #[derive(Debug)]
-struct Local {
-    id: Id,
-    ty: Option<Ty>,
-    points_to: Option<Id>,
-    depth: usize, // TODO: Remove later?
+pub(crate) struct Local {
+    pub id: Id,
+    pub name: Option<String>,
+    pub ty: Option<Ty>,
+    pub points_to: Option<Id>,
+    pub depth: usize, // TODO: Remove later?
 }
 
 impl Context {
@@ -22,15 +23,16 @@ impl Context {
         // TODO: Define globals
         // TODO: Desugar 'last expression returns value'
         let env = Env::default();
-        let locals = HashMap::from_iter([(
-            Id::new(0),
-            Local {
-                id: Id::new(0),
-                ty: None,
-                points_to: None,
-                depth: 0,
-            },
-        )]);
+        let locals = HashMap::new();
+        // let locals = HashMap::from_iter([(
+        //     Id::new(0),
+        //     Local {
+        //         id: Id::new(0),
+        //         ty: None,
+        //         points_to: None,
+        //         depth: 0,
+        //     },
+        // )]);
         Self { env, locals }
     }
 
@@ -40,6 +42,19 @@ impl Context {
 
     pub fn set_env(&mut self, new_env: Env) {
         self.env = new_env;
+    }
+
+    pub(crate) fn get_pointed_local(&self, id: Id) -> &Local {
+        let local = self.locals.get(&id).unwrap();
+        self.get_local(local.points_to.unwrap())
+    }
+
+    pub(crate) fn get_local(&self, id: Id) -> &Local {
+        self.locals.get(&id).unwrap()
+    }
+
+    pub(crate) fn get_local_mut(&mut self, id: Id) -> &mut Local {
+        self.locals.get_mut(&id).unwrap()
     }
 
     pub(crate) fn var_type_at(&self, id: Id) -> Ty {
@@ -57,11 +72,12 @@ impl Context {
         }
     }
 
-    pub(crate) fn new_var(&mut self, id: Id, ty: Ty) {
+    pub(crate) fn new_var(&mut self, id: Id, name: String, ty: Ty) {
         self.locals.insert(
             id,
             Local {
                 id,
+                name: Some(name),
                 ty: Some(ty),
                 depth: 0,
                 points_to: None,
@@ -70,6 +86,7 @@ impl Context {
     }
 
     // TODO: storing depth might not be needed at this stage
+    // Since IR desugars most blocks the depth may be invalid
     pub(crate) fn resolve(&mut self, id: Id, depth: usize, ty: Option<Ty>, points_to: Id) {
         self.locals.insert(
             id,
@@ -77,6 +94,7 @@ impl Context {
                 id,
                 depth,
                 ty,
+                name: None,
                 points_to: Some(points_to),
             },
         );

@@ -17,7 +17,7 @@ pub fn build(source: &Source) -> AshResult<(), String> {
     let type_system = TypeSystem::new(&mut context);
     let typed_ast = type_system.run(ast)?;
     dbg!(&typed_ast);
-    let ir = IR::new();
+    let ir = IR::new(&mut context);
     let ir = ir.run(typed_ast);
     dbg!(&ir);
 
