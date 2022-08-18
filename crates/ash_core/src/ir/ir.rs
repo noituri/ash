@@ -13,6 +13,16 @@ enum Rest {
     None,
 }
 
+impl Rest {
+    pub fn ignore_direction(self) -> Vec<Spanned<Stmt>> {
+        match self {
+            Self::InsertAfter(v) => v,
+            Self::InsertBefore(v) => v,
+            Self::None => Vec::new()
+        }
+    }
+}
+
 struct DesugaredAst<T> {
     returns: Option<T>,
     rest: Rest,
@@ -167,6 +177,50 @@ impl<'a> IR<'a> {
                     DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
                 }
             }
+            Expr::Unary { op, right, ty } => {
+                let expr = self.desugar_expr(*right);
+                let right = Box::new(expr.returns.unwrap());
+                let unary = Expr::Unary { op, right, ty };
+
+                DesugaredAst::new(unary, expr.rest)
+            }
+            Expr::Binary { left, op, right, ty } => {
+                let l_expr = self.desugar_expr(*left);
+                let r_expr = self.desugar_expr(*right);
+                let left = Box::new(l_expr.returns.unwrap());
+                let right = Box::new(r_expr.returns.unwrap());
+                // TODO: Needs testing
+                let rest = {
+                    let mut left = l_expr.rest.ignore_direction();
+                    let mut right = r_expr.rest.ignore_direction();
+                    left.append(&mut right);
+
+                    Rest::InsertBefore(left)
+                };
+                let binary = Expr::Binary { left, op, right, ty };
+               
+                DesugaredAst::new(binary, rest)
+            }
+            Expr::Literal(_) => DesugaredAst::returns(expr),
+            Expr::Call { callee, args, ty } => {
+                let callee_expr = self.desugar_expr(*callee);
+                let callee = Box::new(callee_expr.returns.unwrap());
+
+                let mut rest = callee_expr.rest.ignore_direction();
+                let args = args.into_iter().map(|a| {
+                    let a = self.desugar_expr(a);
+                    let mut arg_rest = a.rest.ignore_direction();
+                    rest.append(&mut arg_rest);
+
+                    a.returns.unwrap()
+                }).collect::<Vec<_>>();
+               
+                // TODO: Needs testing
+                let rest = Rest::InsertBefore(rest); 
+                let call = Expr::Call { callee, args, ty };
+                
+                DesugaredAst::new(call, rest)
+            }
             _ => DesugaredAst::returns(expr),
         }
     }
@@ -197,7 +251,7 @@ impl<'a> IR<'a> {
     }
 
     fn mangle_var_decl_name(&mut self, id: Id, name: &mut String) {
-        *name = format!("{}__{}", name, id);
+        *name = format!("__{}__{}", name, id);
 
         let local = self.context.get_local_mut(id);
         local.name = Some(name.clone())

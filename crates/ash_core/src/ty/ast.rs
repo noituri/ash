@@ -62,7 +62,6 @@ pub(crate) enum Expr {
         ty: Ty,
     },
     Block(Vec<Spanned<Stmt>>, Ty),
-    Group(Box<Expr>, Ty),
     Unary {
         op: UnaryOp,
         right: Box<Expr>,
@@ -83,7 +82,6 @@ impl Expr {
             Self::Literal(value) => value.ty(),
             Self::Call { ty, .. } => ty.clone(),
             Self::Block(_, ty) => ty.clone(),
-            Self::Group(_, ty) => ty.clone(),
             Self::Unary { ty, .. } => ty.clone(),
             Self::Binary { ty, .. } => ty.clone(),
         }

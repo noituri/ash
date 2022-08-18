@@ -6,7 +6,6 @@ pub enum Value {
     I32(i32),
     F64(f64),
     Bool(bool),
-    NotInitialized,
 }
 
 impl Value {
@@ -16,7 +15,6 @@ impl Value {
             Self::I32(_) => Ty::I32,
             Self::F64(_) => Ty::F64,
             Self::Bool(_) => Ty::Bool,
-            Self::NotInitialized => todo!(),
         }
     }
 
@@ -26,8 +24,6 @@ impl Value {
             Ty::Bool => Self::Bool(false),
             Ty::I32 => Self::I32(0),
             Ty::F64 => Self::F64(0.0),
-            // TODO: Test this case
-            // let foo = if <expr> { returns_void() } else { returns_void2() }
             Ty::Void => unreachable!(),
             Ty::Fun(_, _) => todo!(),
         }
