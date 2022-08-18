@@ -81,6 +81,10 @@ impl<'a> TypeSystem<'a> {
                     None => value.ty(),
                 };
 
+                if ty == Ty::Void {
+                    self.new_error("Setting variables to Void is forbidden", span.clone())
+                }
+
                 // TODO: types might need to be pre evaluated first
                 self.context.new_var(id, name.clone(), ty.clone());
                 ty::Stmt::VariableDecl {

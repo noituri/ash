@@ -153,10 +153,13 @@ impl<'a> IR<'a> {
                 DesugaredAst::returns(var)
             }
             Expr::Block(statements, ty) => {
-                let statements = self.desugar_statements(statements);
-                let block = Expr::Block(statements, ty);
-
-                DesugaredAst::returns(block)
+                let mut statements = self.desugar_statements(statements);
+                if ty == Ty::Void {
+                    DesugaredAst::rest(Rest::InsertBefore(statements))
+                } else {
+                    let (last, _) = statements.remove(statements.len()-1);
+                    DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
+                }
             }
             _ => DesugaredAst::returns(expr)
         }
