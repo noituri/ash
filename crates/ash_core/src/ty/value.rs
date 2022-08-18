@@ -16,7 +16,7 @@ impl Value {
             Self::I32(_) => Ty::I32,
             Self::F64(_) => Ty::F64,
             Self::Bool(_) => Ty::Bool,
-            Self::NotInitialized => todo!()
+            Self::NotInitialized => todo!(),
         }
     }
 

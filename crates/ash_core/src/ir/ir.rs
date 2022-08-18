@@ -10,7 +10,7 @@ pub(crate) struct IR<'a> {
 enum Rest {
     InsertBefore(Vec<Spanned<Stmt>>),
     InsertAfter(Vec<Spanned<Stmt>>),
-    None
+    None,
 }
 
 struct DesugaredAst<T> {
@@ -52,7 +52,7 @@ impl DesugaredAst<Spanned<Stmt>> {
     pub fn flatten(self) -> Vec<Spanned<Stmt>> {
         let mut out = match self.returns {
             Some(stmt) => vec![stmt],
-            None => Vec::new()
+            None => Vec::new(),
         };
 
         match self.rest {
@@ -60,7 +60,7 @@ impl DesugaredAst<Spanned<Stmt>> {
             Rest::InsertBefore(mut rest) => {
                 rest.append(&mut out);
                 out = rest;
-            },
+            }
             Rest::None => {}
         }
 
@@ -111,20 +111,26 @@ impl<'a> IR<'a> {
                 };
 
                 DesugaredAst::new((decl, span), ast.rest)
-            },
+            }
             Stmt::Expression(expr, ty) => {
                 let expr = self.desugar_expr(expr);
                 let expr_stmt = Stmt::Expression(expr.returns.unwrap(), ty);
 
                 DesugaredAst::new((expr_stmt, span), expr.rest)
             }
-            Stmt::VariableAssign { id, mut name, value } => {
+            Stmt::VariableAssign {
+                id,
+                mut name,
+                value,
+            } => {
                 self.mangle_var_expr_name(id, &mut name.0);
                 let ty = self.context.var_type_at(id);
                 let expr = self.desugar_expr(value);
-                let value = expr.returns.unwrap_or(Expr::Literal(Value::default_for_ty(ty)));
+                let value = expr
+                    .returns
+                    .unwrap_or(Expr::Literal(Value::default_for_ty(ty)));
                 let assign = Stmt::VariableAssign { id, name, value };
-                
+
                 DesugaredAst::new((assign, span), expr.rest)
             }
             Stmt::Annotation(name, stmt) => {
@@ -135,10 +141,10 @@ impl<'a> IR<'a> {
             }
             Stmt::ProtoFunction(_) => DesugaredAst::returns((stmt, span)),
             Stmt::Return(expr, ty) => {
-                let DesugaredAst { returns, rest } = self.desugar_expr(expr); 
+                let DesugaredAst { returns, rest } = self.desugar_expr(expr);
                 let expr = returns.unwrap_or(Expr::Literal(Value::default_for_ty(ty.clone())));
                 let stmt = Stmt::Return(expr, ty);
-                
+
                 DesugaredAst::new((stmt, span), rest)
             }
         }
@@ -157,11 +163,11 @@ impl<'a> IR<'a> {
                 if ty == Ty::Void {
                     DesugaredAst::rest(Rest::InsertBefore(statements))
                 } else {
-                    let (last, _) = statements.remove(statements.len()-1);
+                    let (last, _) = statements.remove(statements.len() - 1);
                     DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
                 }
             }
-            _ => DesugaredAst::returns(expr)
+            _ => DesugaredAst::returns(expr),
         }
     }
 
@@ -198,10 +204,10 @@ impl<'a> IR<'a> {
     }
 
     fn mangle_var_expr_name(&mut self, id: Id, name: &mut String) {
-        let local = self.context.get_pointed_local(id);    
+        let local = self.context.get_pointed_local(id);
         *name = local.name.clone().unwrap();
     }
-    
+
     fn desugar_fun_return_expr(
         &mut self,
         mut body: Vec<Spanned<Stmt>>,
