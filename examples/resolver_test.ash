@@ -9,7 +9,6 @@ fun main = {
         let b = 3
         sum 3, sum b, 1
     }
-
     // let b = {}
 }
 

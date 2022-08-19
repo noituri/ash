@@ -27,7 +27,7 @@ pub(crate) enum Stmt {
     },
     // TODO:
     // If(If), When used as statement
-    Return(Expr, Ty),
+    Return(Option<Expr>, Ty),
     Expression(Expr, Ty),
 }
 

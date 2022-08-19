@@ -14,6 +14,7 @@ pub(crate) struct TypeSystem<'a> {
     context: &'a mut Context,
     errors: Vec<Simple<String>>,
     parsing_call: bool,
+    current_func_returns: Option<Ty>
 }
 
 impl<'a> TypeSystem<'a> {
@@ -22,6 +23,7 @@ impl<'a> TypeSystem<'a> {
             context,
             errors: Vec::new(),
             parsing_call: false,
+            current_func_returns: None,
         }
     }
 
@@ -50,8 +52,10 @@ impl<'a> TypeSystem<'a> {
             }
             parser::Stmt::Function(fun) => {
                 let proto = &fun.proto.0;
-                let body = self.type_stmt(fun.body);
                 let ty = &fun.proto.0.ty;
+                let prev = self.current_func_returns.replace(ty.fun_return_ty());
+                
+                let body = self.type_stmt(fun.body);
                 if ty.fun_return_ty() != Ty::Void {
                     let body_ty = match &body.0 {
                         ty::Stmt::Expression(ty::Expr::Block(statements, _), Ty::Void) => {
@@ -75,6 +79,8 @@ impl<'a> TypeSystem<'a> {
                     body,
                     proto: fun.proto,
                 };
+
+                self.current_func_returns = prev;
 
                 ty::Stmt::Function(Box::new(fun))
             }
@@ -114,8 +120,13 @@ impl<'a> TypeSystem<'a> {
                 ty::Stmt::VariableAssign { id, name, value }
             }
             parser::Stmt::Return(expr) => {
-                let expr = self.type_expr(expr, span.clone());
-                let ty = expr.ty();
+                let expr = expr.map(|e| self.type_expr(e, span.clone()));
+                let ty = expr.as_ref().map(|e| e.ty()).unwrap_or(Ty::Void);
+                let fun_ty = self.current_func_returns.clone().unwrap();
+
+                if ty != fun_ty {
+                    self.new_error(format!("return statement returns value of invalid type. Expected {fun_ty}, got: {ty}"), span.clone());
+                }
 
                 ty::Stmt::Return(expr, ty)
             }

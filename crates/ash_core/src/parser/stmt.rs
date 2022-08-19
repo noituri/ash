@@ -32,7 +32,7 @@ pub(crate) enum Stmt {
         name: Spanned<String>,
         value: Expr,
     },
-    Return(Expr),
+    Return(Option<Expr>),
     Expression(Expr),
 }
 

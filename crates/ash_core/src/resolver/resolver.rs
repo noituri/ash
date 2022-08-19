@@ -150,8 +150,9 @@ impl<'a> Resolver<'a> {
                 if self.current_function.is_none() {
                     self.new_error("return can not be used outside of function", span.clone())
                 }
-
-                self.resolve_expr(expr, span);
+                if let Some(expr) = expr {
+                    self.resolve_expr(expr, span);
+                }
             }
             _ => {}
         }
