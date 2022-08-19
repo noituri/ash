@@ -150,18 +150,16 @@ impl<'a> IR<'a> {
                 DesugaredAst::new((annotation, span), stmt.rest)
             }
             Stmt::ProtoFunction(_) => DesugaredAst::returns((stmt, span)),
-            Stmt::Return(expr, ty) => {
-                match expr {
-                    Some(expr) => {
-                        let DesugaredAst { returns, rest } = self.desugar_expr(expr);
-                        let expr = returns.unwrap_or(Expr::Literal(Value::default_for_ty(ty.clone())));
-                        let stmt = Stmt::Return(Some(expr), ty);
-        
-                        DesugaredAst::new((stmt, span), rest)
-                    }
-                    None => DesugaredAst::returns((Stmt::Return(None, ty), span))
+            Stmt::Return(expr, ty) => match expr {
+                Some(expr) => {
+                    let DesugaredAst { returns, rest } = self.desugar_expr(expr);
+                    let expr = returns.unwrap_or(Expr::Literal(Value::default_for_ty(ty.clone())));
+                    let stmt = Stmt::Return(Some(expr), ty);
+
+                    DesugaredAst::new((stmt, span), rest)
                 }
-            }
+                None => DesugaredAst::returns((Stmt::Return(None, ty), span)),
+            },
         }
     }
 
@@ -250,7 +248,7 @@ impl<'a> IR<'a> {
             .params
             .iter_mut()
             .for_each(|(id, name, _)| self.mangle_var_decl_name(*id, name));
-        
+
         let fun_ty = fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
@@ -263,7 +261,7 @@ impl<'a> IR<'a> {
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }
             _ => unreachable!("Invalid function body"),
-        };        
+        };
 
         fun.body = (
             Stmt::Expression(Expr::Block(body, fun_ty.clone()), fun_ty),

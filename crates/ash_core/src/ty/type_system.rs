@@ -14,7 +14,7 @@ pub(crate) struct TypeSystem<'a> {
     context: &'a mut Context,
     errors: Vec<Simple<String>>,
     parsing_call: bool,
-    current_func_returns: Option<Ty>
+    current_func_returns: Option<Ty>,
 }
 
 impl<'a> TypeSystem<'a> {
@@ -54,7 +54,7 @@ impl<'a> TypeSystem<'a> {
                 let proto = &fun.proto.0;
                 let ty = &fun.proto.0.ty;
                 let prev = self.current_func_returns.replace(ty.fun_return_ty());
-                
+
                 let body = self.type_stmt(fun.body);
                 if ty.fun_return_ty() != Ty::Void {
                     let body_ty = match &body.0 {

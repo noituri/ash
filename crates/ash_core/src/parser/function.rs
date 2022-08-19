@@ -110,6 +110,10 @@ pub(super) fn return_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
     just(Token::Return)
-        .ignore_then(stmt_expression_parser(stmt).or_not().then_ignore(just(Token::NewLine)))
+        .ignore_then(
+            stmt_expression_parser(stmt)
+                .or_not()
+                .then_ignore(just(Token::NewLine)),
+        )
         .map_with_span(|expr, span| (Stmt::Return(expr), span))
 }
