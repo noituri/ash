@@ -2,6 +2,8 @@ use crate::core::{Id, Spanned};
 
 use super::Ty;
 
+pub(crate) const MAX_FUNCTION_PARAMS: usize = 255;
+
 pub(crate) type FunArg = (Id, String, Ty);
 
 #[derive(Debug, Clone, Copy)]

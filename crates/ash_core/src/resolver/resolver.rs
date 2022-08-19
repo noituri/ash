@@ -6,7 +6,7 @@ use crate::{
     core::{Context, Id, Spanned},
     parser::{expr::Expr, stmt::Stmt},
     prelude::{AshResult, Span},
-    ty::{FunctionType, Ty},
+    ty::{function::MAX_FUNCTION_PARAMS, FunctionType, Ty},
 };
 
 pub(crate) type Scope = HashMap<String, VarData>;
@@ -122,6 +122,12 @@ impl<'a> Resolver<'a> {
                 self.resolve_local(*id, name, span.clone());
             }
             Stmt::ProtoFunction(proto) => {
+                if proto.params.len() > MAX_FUNCTION_PARAMS {
+                    self.new_error(
+                        "Functions can not have more than {MAX_FUNCTION_PARAMS} arguments",
+                        span.clone(),
+                    );
+                }
                 self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
@@ -136,6 +142,12 @@ impl<'a> Resolver<'a> {
                 {
                     self.enter_scope();
 
+                    if proto.params.len() > MAX_FUNCTION_PARAMS {
+                        self.new_error(
+                            "Functions can not have more than {MAX_FUNCTION_PARAMS} arguments",
+                            span.clone(),
+                        );
+                    }
                     for (id, param, ty) in proto.params.iter() {
                         self.declare(param.clone(), *id, Some(ty.clone()));
                         self.define(param.clone());
