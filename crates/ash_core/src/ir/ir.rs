@@ -239,6 +239,13 @@ impl<'a> IR<'a> {
     }
 
     fn desugar_fun(&mut self, mut fun: Box<Function<Stmt>>) -> Box<Function<Stmt>> {
+        // Mangle param names
+        fun.proto
+            .0
+            .params
+            .iter_mut()
+            .for_each(|(id, name, _)| self.mangle_var_decl_name(*id, name));
+        
         let ty = fun.body.0.ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
@@ -252,7 +259,7 @@ impl<'a> IR<'a> {
                 self.desugar_fun_return_expr(statements, ty.clone())
             }
             _ => unreachable!("Invalid function body"),
-        };
+        };        
 
         fun.body = (
             Stmt::Expression(Expr::Block(body, ty.clone()), ty),
@@ -266,6 +273,7 @@ impl<'a> IR<'a> {
     fn mangle_var_decl_name(&mut self, id: Id, name: &mut String) {
         *name = format!("__{}__{}", name, id);
 
+        dbg!(&name);
         let local = self.context.get_local_mut(id);
         local.name = Some(name.clone())
     }
@@ -273,6 +281,7 @@ impl<'a> IR<'a> {
     fn mangle_var_expr_name(&mut self, id: Id, name: &mut String) {
         let local = self.context.get_pointed_local(id);
         *name = local.name.clone().unwrap();
+        dbg!(name);
     }
 
     fn desugar_fun_return_expr(
