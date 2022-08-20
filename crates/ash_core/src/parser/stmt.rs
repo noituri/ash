@@ -13,7 +13,7 @@ use super::{
     common::block_parser,
     expr::{expression_parser, Expr},
     function::{function_parser, function_proto_parser, return_parser},
-    variable::{variable_assign_parse, variable_decl_parse},
+    variable::{variable_assign_parse, variable_decl_parse}, conditional::if_parser,
 };
 
 #[derive(Debug, Clone)]
@@ -67,5 +67,5 @@ pub(super) fn statement_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Si
 pub(super) fn stmt_expression_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
-    block_parser(stmt).or(expression_parser())
+    if_parser(stmt.clone()).or(block_parser(stmt)).or(expression_parser())
 }

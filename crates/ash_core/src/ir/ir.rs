@@ -1,5 +1,7 @@
 use crate::{
-    core::{Context, Id, Spanned},
+    core::{next_id, Context, Id, Spanned},
+    parser::{conditional::IfInner, If},
+    prelude::Span,
     ty::{function::Function, Expr, Stmt, Ty, Value},
 };
 
@@ -171,15 +173,7 @@ impl<'a> IR<'a> {
 
                 DesugaredAst::returns(var)
             }
-            Expr::Block(statements, ty) => {
-                let mut statements = self.desugar_statements(statements);
-                if ty == Ty::Void {
-                    DesugaredAst::rest(Rest::InsertBefore(statements))
-                } else {
-                    let (last, _) = statements.remove(statements.len() - 1);
-                    DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
-                }
-            }
+            Expr::Block(statements, ty) => self.desugar_block(statements, ty),
             Expr::Unary { op, right, ty } => {
                 let expr = self.desugar_expr(*right);
                 let right = Box::new(expr.returns.unwrap());
@@ -237,9 +231,107 @@ impl<'a> IR<'a> {
 
                 DesugaredAst::new(call, rest)
             }
+            Expr::If(r#if, ty) => {
+                match ty {
+                    Some(ty) => {
+                        let r#if = self.desugar_if_expr(r#if, ty);
+                        DesugaredAst::new(r#if.returns.unwrap(), r#if.rest)
+                    }
+                    None => DesugaredAst::none() // TODO: It's a statement not expression
+                }
+            }
             _ => DesugaredAst::returns(expr),
         }
     }
+
+    fn desugar_block(&mut self, statements: Vec<Spanned<Stmt>>, ty: Ty) -> DesugaredAst<Expr> {
+        let mut statements = self.desugar_statements(statements);
+        if ty == Ty::Void {
+            DesugaredAst::rest(Rest::InsertBefore(statements))
+        } else {
+            let (last, _) = statements.remove(statements.len() - 1);
+            DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
+        }
+    }
+
+    // TODO: clean up and split into smaller functions
+    fn desugar_if_expr(&mut self, mut r#if: If<Expr, Stmt>, ty: Ty) -> DesugaredAst<Expr> {
+        let mut insert_before = Vec::new();
+        let id = next_id();
+        let mut name = "_tmp_".to_owned();
+        self.context.new_var(id, name.clone(), ty.clone());
+        self.mangle_var_decl_name(id, &mut name);
+        let tmp_var = Stmt::VariableDecl {
+            id,
+            name: name.clone(),
+            ty: ty.clone(),
+            value: Expr::Literal(Value::default_for_ty(ty.clone())),
+        };
+        insert_before.push((tmp_var, Span::default()));
+        let tmp_var_read_id = next_id();
+        let tmp_var_read = Expr::Variable(tmp_var_read_id, name.clone(), ty.clone());
+        self.context.resolve(tmp_var_read_id, 0, Some(ty.clone()), id);
+
+        // TODO: Desugar condition
+        let then_body = self.desugar_block(r#if.then.body, ty.clone());
+        
+        let then_assign_id = next_id();
+        let assign = then_body.returns.map(|expr| Stmt::VariableAssign {
+            id: then_assign_id,
+            name: (name.clone(), Span::default()),
+            value: expr,
+        }).unwrap();
+        self.context.resolve(then_assign_id, 0, Some(ty.clone()), id);
+        
+        r#if.then.body = then_body.rest.ignore_direction();
+        r#if.then.body.push((assign, Span::default()));
+
+        // TODO: Else ifs
+        // TODO: Desugar else ifs conditions
+        let mut else_ifs = Vec::new();
+        for mut else_if in r#if.else_ifs {    
+            let body = self.desugar_block(else_if.body, ty.clone());
+            let assign_id = next_id();
+            let assign = body.returns.map(|expr| Stmt::VariableAssign {
+                id: assign_id,
+                name: (name.clone(), Span::default()),
+                value: expr,
+            }).unwrap();
+            self.context.resolve(assign_id, 0, Some(ty.clone()), id);
+            else_if.body = body.rest.ignore_direction();
+            else_if.body.push((assign, Span::default()));
+            else_ifs.push(else_if);
+        }
+        r#if.else_ifs = else_ifs;
+
+        // TODO: Else
+
+        let else_body = self.desugar_block(r#if.otherwise, ty.clone());
+        
+        let else_assign_id = next_id();
+        let assign = else_body.returns.map(|expr| Stmt::VariableAssign {
+            id: else_assign_id,
+            name: (name.clone(), Span::default()),
+            value: expr,
+        }).unwrap();
+        self.context.resolve(else_assign_id, 0, Some(ty.clone()), id);
+        
+        r#if.otherwise = else_body.rest.ignore_direction();
+        r#if.otherwise.push((assign, Span::default()));
+        // TODO: Construct If
+        let r#if = If {
+            then: r#if.then,
+            else_ifs: r#if.else_ifs,
+            otherwise: r#if.otherwise,
+        };
+        
+        // TODO: Return variable __tmp__
+        // TODO: Use Stmt::If
+        insert_before.push((Stmt::Expression(Expr::If(r#if, None), ty.clone()), Span::default()));
+        DesugaredAst::new(tmp_var_read, Rest::InsertBefore(insert_before))
+    }
+
+    fn desugar_else_if() {}
 
     fn desugar_fun(&mut self, mut fun: Box<Function<Stmt>>) -> Box<Function<Stmt>> {
         // Mangle param names

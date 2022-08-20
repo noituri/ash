@@ -2,7 +2,7 @@ use chumsky::prelude::Simple;
 
 use crate::{
     core::{Context, Spanned},
-    parser::{self, operator::BinaryOp},
+    parser::{self, conditional::IfInner, operator::BinaryOp, If},
     prelude::{AshResult, Span},
 };
 
@@ -90,7 +90,7 @@ impl<'a> TypeSystem<'a> {
                 ty,
                 value,
             } => {
-                let value = self.type_expr(value, span.clone());
+                let value = self.type_expr(value, span.clone(), false);
                 let ty = match ty {
                     Some(ty) => {
                         self.check_type(ty.clone(), value.ty(), span.clone());
@@ -114,16 +114,18 @@ impl<'a> TypeSystem<'a> {
             }
             parser::Stmt::VariableAssign { id, name, value } => {
                 let ty = self.context.var_type_at(id);
-                let value = self.type_expr(value, span.clone());
+                let value = self.type_expr(value, span.clone(), false);
                 self.check_type(ty, value.ty(), span.clone());
 
                 ty::Stmt::VariableAssign { id, name, value }
             }
             parser::Stmt::Return(expr) => {
-                let expr = expr.map(|e| self.type_expr(e, span.clone()));
+                let expr = expr.map(|e| self.type_expr(e, span.clone(), false));
                 let ty = expr.as_ref().map(|e| e.ty()).unwrap_or(Ty::Void);
                 let fun_ty = self.current_func_returns.clone().unwrap();
-
+                if fun_ty == Ty::Void && expr.is_some() {
+                    self.new_error("Function returns nothing. The return statement should not contain any expressions", span.clone())
+                }
                 if ty != fun_ty {
                     self.new_error(format!("return statement returns value of invalid type. Expected {fun_ty}, got: {ty}"), span.clone());
                 }
@@ -131,7 +133,7 @@ impl<'a> TypeSystem<'a> {
                 ty::Stmt::Return(expr, ty)
             }
             parser::Stmt::Expression(expr) => {
-                let expr = self.type_expr(expr, span.clone());
+                let expr = self.type_expr(expr, span.clone(), true);
                 let ty = expr.ty();
 
                 ty::Stmt::Expression(expr, ty)
@@ -144,7 +146,7 @@ impl<'a> TypeSystem<'a> {
         (stmt, span)
     }
 
-    fn type_expr(&mut self, expr: parser::Expr, span: Span) -> ty::Expr {
+    fn type_expr(&mut self, expr: parser::Expr, span: Span, expr_statement: bool) -> ty::Expr {
         match expr {
             parser::Expr::Variable(id, name) => {
                 let ty = self.context.var_type_at(id);
@@ -158,28 +160,57 @@ impl<'a> TypeSystem<'a> {
             parser::Expr::Literal(value) => ty::Expr::Literal(value),
             parser::Expr::Call { callee, args } => self.type_call(*callee, args, span),
             parser::Expr::Block(statements) => {
-                let statements = statements
-                    .into_iter()
-                    .map(|stmt| self.type_stmt(stmt))
-                    .collect::<Vec<_>>();
-
-                let ty = statements
-                    .last()
-                    .map(|(stmt, _)| {
-                        if let ty::Stmt::Expression(_, ty) = stmt {
-                            ty.clone()
-                        } else {
-                            Ty::Void
-                        }
-                    })
-                    .unwrap_or_default();
-
+                let (statements, ty) = self.type_block(statements);
                 ty::Expr::Block(statements, ty)
             }
-            parser::Expr::Group(expr) => self.type_expr(*expr, span),
+            parser::Expr::If(If {
+                then,
+                else_ifs,
+                otherwise,
+            }) => {
+                let (then, then_ty) = self.type_if(*then);
+                let (else_ifs, mut else_ifs_ty): (Vec<_>, Vec<_>) =
+                    else_ifs.into_iter().map(|ef| self.type_if(ef)).unzip();
+                let (otherwise, otherwise_ty) = self.type_block(otherwise);
+
+                let ty = if expr_statement {
+                    None
+                } else {
+                    let mut conditions = vec![&then.condition];
+                    for else_if in else_ifs.iter() {
+                        conditions.push(&else_if.condition);
+                    }
+
+                    for (cond_ty, span) in conditions.iter() {
+                        self.check_type(Ty::Bool, cond_ty.ty(), span.clone());
+                    }
+
+                    let mut body_types = vec![then_ty, otherwise_ty];
+                    body_types.append(&mut else_ifs_ty);
+
+                    let first_ty = body_types.remove(0);
+                    for ty in body_types {
+                        if !self.check_type(first_ty.clone(), ty, span.clone()) {
+                            break;
+                        }
+                    }
+
+                    Some(first_ty)
+                };
+
+                ty::Expr::If(
+                    If {
+                        then: Box::new(then),
+                        else_ifs,
+                        otherwise,
+                    },
+                    ty,
+                )
+            }
+            parser::Expr::Group(expr) => self.type_expr(*expr, span, expr_statement),
             parser::Expr::Unary { op, right } => {
                 // TODO: Find trait implementation for the operator and operand
-                let right = Box::new(self.type_expr(*right, span.clone()));
+                let right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
                 self.check_type(Ty::Bool, right.ty(), span);
                 ty::Expr::Unary {
                     op,
@@ -188,27 +219,34 @@ impl<'a> TypeSystem<'a> {
                 }
             }
             parser::Expr::Binary { left, op, right } => {
-                let left = Box::new(self.type_expr(*left, span.clone()));
-                let right = Box::new(self.type_expr(*right, span.clone()));
-                if self.check_type(left.ty(), right.ty(), span.clone()) {
-                    // TODO: Better implementation
-                    let numeric_ops = &[BinaryOp::Div, BinaryOp::Mod, BinaryOp::Mul, BinaryOp::Sum];
-                    let _other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
-                    let num_string_ops = &[BinaryOp::Sum];
+                let left = Box::new(self.type_expr(*left, span.clone(), expr_statement));
+                let right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
+                // TODO: Better implementation
+                let numeric_ops = &[BinaryOp::Div, BinaryOp::Mod, BinaryOp::Mul, BinaryOp::Sum];
+                let other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
+                let num_string_ops = &[BinaryOp::Sum];
 
+                if self.check_type(left.ty(), right.ty(), span.clone()) {
                     let expected_ty =
                         if num_string_ops.contains(&op) || num_string_ops.contains(&op) {
                             vec![Ty::String, Ty::I32, Ty::F64]
                         } else if numeric_ops.contains(&op) {
                             vec![Ty::I32, Ty::F64]
-                        } else {
+                        } else if other_ops.contains(&op) {
+                            vec![Ty::I32, Ty::F64, Ty::String, Ty::Bool]
+                        }else {
                             Vec::new()
                         };
 
                     self.is_one_of(&expected_ty, &left.ty(), span);
                 }
 
-                let ty = left.ty();
+                let ty = if other_ops.contains(&op) {
+                    Ty::Bool
+                } else {
+                    left.ty()
+                };
+
                 ty::Expr::Binary {
                     left,
                     op,
@@ -219,9 +257,43 @@ impl<'a> TypeSystem<'a> {
         }
     }
 
+    fn type_if(
+        &mut self,
+        r#if: IfInner<parser::Expr, parser::Stmt>,
+    ) -> (IfInner<ty::Expr, ty::Stmt>, Ty) {
+        let (cond_expr, span) = r#if.condition;
+        let condition = (self.type_expr(cond_expr, span.clone(), false), span);
+        let (body, ty) = self.type_block(r#if.body);
+        let r#if = IfInner { condition, body };
+
+        (r#if, ty)
+    }
+
+    fn type_block(
+        &mut self,
+        statements: Vec<Spanned<parser::Stmt>>,
+    ) -> (Vec<Spanned<ty::Stmt>>, Ty) {
+        let statements = statements
+            .into_iter()
+            .map(|stmt| self.type_stmt(stmt))
+            .collect::<Vec<_>>();
+
+        let ty = statements
+            .last()
+            .map(|(stmt, _)| {
+                if let ty::Stmt::Expression(_, ty) = stmt {
+                    ty.clone()
+                } else {
+                    Ty::Void
+                }
+            })
+            .unwrap_or_default();
+        (statements, ty)
+    }
+
     fn type_call(&mut self, callee: parser::Expr, args: Vec<parser::Expr>, span: Span) -> ty::Expr {
         self.parsing_call = true;
-        let callee = self.type_expr(callee, span.clone());
+        let callee = self.type_expr(callee, span.clone(), false);
         self.parsing_call = false;
 
         let fun_ty = callee.ty();
@@ -231,7 +303,7 @@ impl<'a> TypeSystem<'a> {
             if params.len() == args.len() {
                 // TODO: Args should have their own spans
                 for (i, arg) in args.into_iter().enumerate() {
-                    let arg = self.type_expr(arg, span.clone());
+                    let arg = self.type_expr(arg, span.clone(), false);
                     self.check_type(params[i].clone(), arg.ty(), span.clone());
                     typed_args.push(arg);
                 }

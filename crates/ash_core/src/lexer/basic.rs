@@ -21,10 +21,16 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         })
         .labelled("operators");
 
-    let other = one_of("=,@").map_with_span(|c, _span| match c {
+    let other = one_of("=,@{}[]()").map_with_span(|c, _span| match c {
         '=' => Token::Equal,
         ',' => Token::Comma,
         '@' => Token::At,
+        '{' => Token::LBrace,
+        '}' => Token::RBrace,
+        '(' => Token::LParen,
+        ')' => Token::RParen,
+        '[' => Token::LBracket,
+        ']' => Token::RBracket,
         _ => unreachable!(),
     });
 

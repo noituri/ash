@@ -37,11 +37,13 @@ pub(super) fn ident_with_suffix_parser() -> impl Parser<Token, String, Error = S
 
 pub(super) fn block_parser<'a>(
     stmt: StmtRecursive<'a>,
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
+) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a + Clone {
     just(Token::LBrace)
         .ignore_then(stmt.repeated())
+        .padded_by(just(Token::NewLine).repeated())
         .then_ignore(just(Token::RBrace))
         .map(Expr::Block)
+        // .recover_with(nested_delimiters(Token::LBrace, Token::RBrace, [], |_| Expr::Block(Vec::new())))
 }
 
 pub(super) fn type_parser() -> impl Parser<Token, Ty, Error = Simple<Token>> {

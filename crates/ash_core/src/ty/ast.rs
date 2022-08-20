@@ -1,6 +1,6 @@
 use crate::{
     core::{Annotation, Id, Spanned},
-    parser::operator::{BinaryOp, UnaryOp},
+    parser::{operator::{BinaryOp, UnaryOp}, conditional::IfInner, If},
 };
 
 use super::{
@@ -62,6 +62,7 @@ pub(crate) enum Expr {
         ty: Ty,
     },
     Block(Vec<Spanned<Stmt>>, Ty),
+    If(If<Expr, Stmt>, Option<Ty>),
     Unary {
         op: UnaryOp,
         right: Box<Expr>,
@@ -82,6 +83,7 @@ impl Expr {
             Self::Literal(value) => value.ty(),
             Self::Call { ty, .. } => ty.clone(),
             Self::Block(_, ty) => ty.clone(),
+            Self::If(_, ty) => ty.clone().unwrap(), // if has type when it's used as expression
             Self::Unary { ty, .. } => ty.clone(),
             Self::Binary { ty, .. } => ty.clone(),
         }

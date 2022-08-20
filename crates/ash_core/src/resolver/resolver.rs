@@ -4,7 +4,7 @@ use chumsky::prelude::Simple;
 
 use crate::{
     core::{Context, Id, Spanned},
-    parser::{expr::Expr, stmt::Stmt},
+    parser::{expr::Expr, stmt::Stmt, If},
     prelude::{AshResult, Span},
     ty::{function::MAX_FUNCTION_PARAMS, FunctionType, Ty},
 };
@@ -197,6 +197,19 @@ impl<'a> Resolver<'a> {
             }
             Expr::Group(expr) => self.resolve_expr(expr, span),
             Expr::Block(stmts) => self.block(stmts),
+            Expr::If(If { then, else_ifs, otherwise }) => {
+                let (cond, cond_span) = &then.condition;
+                self.resolve_expr(cond, cond_span);
+                self.resolve_statements(&then.body);
+
+                for else_if in else_ifs {
+                    let (cond, cond_span) = &else_if.condition;
+                    self.resolve_expr(cond, cond_span);
+                    self.resolve_statements(&then.body);
+                }
+
+                self.resolve_statements(otherwise);
+            }
             _ => {}
         }
     }
