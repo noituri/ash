@@ -8,7 +8,6 @@ use crate::ty::TypeSystem;
 pub fn build(source: &Source) -> AshResult<(), String> {
     let lexer = Lexer::new();
     let tokens = lexer.scan(source.inner()).string_err()?;
-    dbg!(&tokens);
     let parser = Parser::new();
     let ast = parser.parse(tokens).string_err()?;
     let mut context = Context::new();

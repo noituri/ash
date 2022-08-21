@@ -2,36 +2,18 @@ use crate::{
     core::{next_id, Context, Id, Spanned},
     parser::{conditional::IfInner, If},
     prelude::Span,
-    ty::{function::Function, Expr, Stmt, Ty, Value},
+    ty::{self, function::Function, Ty, Value},
 };
 
-pub(crate) struct IR<'a> {
-    context: &'a mut Context,
-}
-
-enum Rest {
-    InsertBefore(Vec<Spanned<Stmt>>),
-    InsertAfter(Vec<Spanned<Stmt>>),
-    None,
-}
-
-impl Rest {
-    pub fn ignore_direction(self) -> Vec<Spanned<Stmt>> {
-        match self {
-            Self::InsertAfter(v) => v,
-            Self::InsertBefore(v) => v,
-            Self::None => Vec::new(),
-        }
-    }
-}
+use crate::ir;
 
 struct DesugaredAst<T> {
     returns: Option<T>,
-    rest: Rest,
+    rest: Vec<Spanned<ir::Stmt>>,
 }
 
 impl<T> DesugaredAst<T> {
-    pub fn new(returns: T, rest: Rest) -> Self {
+    pub fn new(returns: T, rest: Vec<Spanned<ir::Stmt>>) -> Self {
         Self {
             returns: Some(returns),
             rest,
@@ -41,11 +23,11 @@ impl<T> DesugaredAst<T> {
     pub fn returns(returns: T) -> Self {
         Self {
             returns: Some(returns),
-            rest: Rest::None,
+            rest: Vec::new(),
         }
     }
 
-    pub fn rest(rest: Rest) -> Self {
+    pub fn rest(rest: Vec<Spanned<ir::Stmt>>) -> Self {
         Self {
             returns: None,
             rest,
@@ -55,29 +37,23 @@ impl<T> DesugaredAst<T> {
     pub fn none() -> Self {
         Self {
             returns: None,
-            rest: Rest::None,
+            rest: Vec::new(),
         }
     }
 }
 
-impl DesugaredAst<Spanned<Stmt>> {
-    pub fn flatten(self) -> Vec<Spanned<Stmt>> {
-        let mut out = match self.returns {
-            Some(stmt) => vec![stmt],
-            None => Vec::new(),
-        };
-
-        match self.rest {
-            Rest::InsertAfter(mut rest) => out.append(&mut rest),
-            Rest::InsertBefore(mut rest) => {
-                rest.append(&mut out);
-                out = rest;
-            }
-            Rest::None => {}
+impl DesugaredAst<Spanned<ir::Stmt>> {
+    pub fn flatten(mut self) -> Vec<Spanned<ir::Stmt>> {
+        if let Some(stmt) = self.returns {
+            self.rest.push(stmt);
         }
 
-        out
+        self.rest
     }
+}
+
+pub(crate) struct IR<'a> {
+    context: &'a mut Context,
 }
 
 impl<'a> IR<'a> {
@@ -86,11 +62,11 @@ impl<'a> IR<'a> {
     }
 
     // TODO: Return Bytecode IR
-    pub fn run(mut self, ast: Vec<Spanned<Stmt>>) -> Vec<Spanned<Stmt>> {
+    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
         self.desugar_statements(ast)
     }
 
-    fn desugar_statements(&mut self, statements: Vec<Spanned<Stmt>>) -> Vec<Spanned<Stmt>> {
+    fn desugar_statements(&mut self, statements: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
         statements
             .into_iter()
             .map(|stmt| self.desugar_stmt(stmt).flatten())
@@ -98,13 +74,13 @@ impl<'a> IR<'a> {
             .collect()
     }
 
-    fn desugar_stmt(&mut self, (stmt, span): Spanned<Stmt>) -> DesugaredAst<Spanned<Stmt>> {
+    fn desugar_stmt(&mut self, (stmt, span): Spanned<ty::Stmt>) -> DesugaredAst<Spanned<ir::Stmt>> {
         match stmt {
-            Stmt::Function(mut fun) => {
-                fun = self.desugar_fun(fun);
-                DesugaredAst::returns((Stmt::Function(fun), span))
+            ty::Stmt::Function(fun) => {
+                let fun = self.desugar_fun(fun);
+                DesugaredAst::returns((ir::Stmt::Function(fun), span))
             }
-            Stmt::VariableDecl {
+            ty::Stmt::VariableDecl {
                 id,
                 mut name,
                 ty,
@@ -114,8 +90,8 @@ impl<'a> IR<'a> {
                 let ast = self.desugar_expr(value);
                 let value = ast
                     .returns
-                    .unwrap_or(Expr::Literal(Value::default_for_ty(ty.clone())));
-                let decl = Stmt::VariableDecl {
+                    .unwrap_or(ir::Expr::Literal(Value::default_for_ty(ty.clone())));
+                let decl = ir::Stmt::VariableDecl {
                     id,
                     name,
                     ty,
@@ -124,13 +100,17 @@ impl<'a> IR<'a> {
 
                 DesugaredAst::new((decl, span), ast.rest)
             }
-            Stmt::Expression(expr, ty) => {
+            ty::Stmt::Expression(expr, ty) => {
                 let expr = self.desugar_expr(expr);
-                let expr_stmt = Stmt::Expression(expr.returns.unwrap(), ty);
-
-                DesugaredAst::new((expr_stmt, span), expr.rest)
+                match expr.returns {
+                    Some(returns) => {
+                        let expr_stmt = ir::Stmt::Expression(returns, ty);
+                        DesugaredAst::new((expr_stmt, span), expr.rest)
+                    }
+                    None => DesugaredAst::rest(expr.rest)
+                }
             }
-            Stmt::VariableAssign {
+            ty::Stmt::VariableAssign {
                 id,
                 mut name,
                 value,
@@ -140,48 +120,52 @@ impl<'a> IR<'a> {
                 let expr = self.desugar_expr(value);
                 let value = expr
                     .returns
-                    .unwrap_or(Expr::Literal(Value::default_for_ty(ty)));
-                let assign = Stmt::VariableAssign { id, name, value };
+                    .unwrap_or(ir::Expr::Literal(Value::default_for_ty(ty)));
+                let assign = ir::Stmt::VariableAssign { id, name, value };
 
                 DesugaredAst::new((assign, span), expr.rest)
             }
-            Stmt::Annotation(name, stmt) => {
+            ty::Stmt::Annotation(name, stmt) => {
                 let stmt = self.desugar_stmt(*stmt);
-                let annotation = Stmt::Annotation(name, Box::new(stmt.returns.unwrap()));
+                let annotation = ir::Stmt::Annotation(name, Box::new(stmt.returns.unwrap()));
 
                 DesugaredAst::new((annotation, span), stmt.rest)
             }
-            Stmt::ProtoFunction(_) => DesugaredAst::returns((stmt, span)),
-            Stmt::Return(expr, ty) => match expr {
+            ty::Stmt::ProtoFunction(proto) => {
+                let proto_stmt = ir::Stmt::ProtoFunction(proto);
+                DesugaredAst::returns((proto_stmt, span))
+            }
+            ty::Stmt::Return(expr, ty) => match expr {
                 Some(expr) => {
                     let DesugaredAst { returns, rest } = self.desugar_expr(expr);
-                    let expr = returns.unwrap_or(Expr::Literal(Value::default_for_ty(ty.clone())));
-                    let stmt = Stmt::Return(Some(expr), ty);
+                    let expr =
+                        returns.unwrap_or(ir::Expr::Literal(Value::default_for_ty(ty.clone())));
+                    let stmt = ir::Stmt::Return(Some(expr), ty);
 
                     DesugaredAst::new((stmt, span), rest)
                 }
-                None => DesugaredAst::returns((Stmt::Return(None, ty), span)),
+                None => DesugaredAst::returns((ir::Stmt::Return(None, ty), span)),
             },
         }
     }
 
-    fn desugar_expr(&mut self, expr: Expr) -> DesugaredAst<Expr> {
+    fn desugar_expr(&mut self, expr: ty::Expr) -> DesugaredAst<ir::Expr> {
         match expr {
-            Expr::Variable(id, mut name, ty) => {
+            ty::Expr::Variable(id, mut name, ty) => {
                 self.mangle_var_expr_name(id, &mut name);
-                let var = Expr::Variable(id, name, ty);
+                let var = ir::Expr::Variable(id, name, ty);
 
                 DesugaredAst::returns(var)
             }
-            Expr::Block(statements, ty) => self.desugar_block(statements, ty),
-            Expr::Unary { op, right, ty } => {
+            ty::Expr::Block(statements, ty) => self.desugar_block(statements, ty),
+            ty::Expr::Unary { op, right, ty } => {
                 let expr = self.desugar_expr(*right);
                 let right = Box::new(expr.returns.unwrap());
-                let unary = Expr::Unary { op, right, ty };
+                let unary = ir::Expr::Unary { op, right, ty };
 
                 DesugaredAst::new(unary, expr.rest)
             }
-            Expr::Binary {
+            ty::Expr::Binary {
                 left,
                 op,
                 right,
@@ -193,32 +177,32 @@ impl<'a> IR<'a> {
                 let right = Box::new(r_expr.returns.unwrap());
                 // TODO: Needs testing
                 let rest = {
-                    let mut left = l_expr.rest.ignore_direction();
-                    let mut right = r_expr.rest.ignore_direction();
+                    let mut left = l_expr.rest;
+                    let mut right = r_expr.rest;
                     left.append(&mut right);
 
-                    Rest::InsertBefore(left)
+                    left
                 };
-                let binary = Expr::Binary {
+                let binary = ir::Expr::Binary {
                     left,
                     op,
                     right,
                     ty,
                 };
-
+                
                 DesugaredAst::new(binary, rest)
             }
-            Expr::Literal(_) => DesugaredAst::returns(expr),
-            Expr::Call { callee, args, ty } => {
+            ty::Expr::Literal(value) => DesugaredAst::returns(ir::Expr::Literal(value)),
+            ty::Expr::Call { callee, args, ty } => {
                 let callee_expr = self.desugar_expr(*callee);
                 let callee = Box::new(callee_expr.returns.unwrap());
 
-                let mut rest = callee_expr.rest.ignore_direction();
+                let mut rest = callee_expr.rest;
                 let args = args
                     .into_iter()
                     .map(|a| {
                         let a = self.desugar_expr(a);
-                        let mut arg_rest = a.rest.ignore_direction();
+                        let mut arg_rest = a.rest;
                         rest.append(&mut arg_rest);
 
                         a.returns.unwrap()
@@ -226,148 +210,206 @@ impl<'a> IR<'a> {
                     .collect::<Vec<_>>();
 
                 // TODO: Needs testing
-                let rest = Rest::InsertBefore(rest);
-                let call = Expr::Call { callee, args, ty };
-
+                let call = ir::Expr::Call { callee, args, ty };
                 DesugaredAst::new(call, rest)
             }
-            Expr::If(r#if, ty) => {
-                // TODO: Detect wether it's an expression or statement
-                let r#if = if ty == Ty::Void {
-                    DesugaredAst::returns(Expr::If(r#if, ty))
+            ty::Expr::If(r#if, ty) => {
+                // TODO: Span
+                if ty == Ty::Void {
+                    let tmp = self.desugar_if_stmt(r#if);
+                    DesugaredAst::rest(tmp.flatten())
                 } else {
-                    self.desugar_if_expr(r#if, ty)
-                };
-                DesugaredAst::new(r#if.returns.unwrap(), r#if.rest)
+                    let tmp = self.desugar_if_expr(r#if, ty);
+                    DesugaredAst::new(tmp.returns.unwrap(), tmp.rest)
+                }
             }
-            _ => DesugaredAst::returns(expr),
         }
     }
 
-    fn desugar_block(&mut self, statements: Vec<Spanned<Stmt>>, ty: Ty) -> DesugaredAst<Expr> {
+    fn desugar_block(
+        &mut self,
+        statements: Vec<Spanned<ty::Stmt>>,
+        ty: Ty,
+    ) -> DesugaredAst<ir::Expr> {
         let mut statements = self.desugar_statements(statements);
         if ty == Ty::Void {
-            DesugaredAst::rest(Rest::InsertBefore(statements))
+            DesugaredAst::rest(statements)
         } else {
             let (last, _) = statements.remove(statements.len() - 1);
-            DesugaredAst::new(last.to_expr(), Rest::InsertBefore(statements))
+            let expr = if let ir::Stmt::Expression(expr, _) = last {
+                expr
+            } else {
+                unreachable!()
+            };
+            DesugaredAst::new(expr, statements)
         }
     }
 
-    // TODO: clean up and split into smaller functions
-    fn desugar_if_expr(&mut self, mut r#if: If<Expr, Stmt>, ty: Ty) -> DesugaredAst<Expr> {
-        let mut insert_before = Vec::new();
+    fn init_new_var(&mut self, statements: &mut Vec<Spanned<ir::Stmt>>, ty: Ty) -> (Id, String) {
         let id = next_id();
         let mut name = "_tmp_".to_owned();
         self.context.new_var(id, name.clone(), ty.clone());
         self.mangle_var_decl_name(id, &mut name);
-        let tmp_var = Stmt::VariableDecl {
+        let tmp_var = ir::Stmt::VariableDecl {
             id,
             name: name.clone(),
             ty: ty.clone(),
-            value: Expr::Literal(Value::default_for_ty(ty.clone())),
+            value: ir::Expr::Literal(Value::default_for_ty(ty.clone())),
         };
-        insert_before.push((tmp_var, Span::default()));
-        let tmp_var_read_id = next_id();
-        let tmp_var_read = Expr::Variable(tmp_var_read_id, name.clone(), ty.clone());
-        self.context.resolve(tmp_var_read_id, 0, Some(ty.clone()), id);
+        statements.push((tmp_var, Span::default()));
 
-        // TODO: Desugar condition
-        let then_body = self.desugar_block(r#if.then.body, ty.clone());
-        
-        let then_assign_id = next_id();
-        let assign = then_body.returns.map(|expr| Stmt::VariableAssign {
-            id: then_assign_id,
-            name: (name.clone(), Span::default()),
-            value: expr,
-        }).unwrap();
-        self.context.resolve(then_assign_id, 0, Some(ty.clone()), id);
-        
-        r#if.then.body = then_body.rest.ignore_direction();
-        r#if.then.body.push((assign, Span::default()));
-
-        // TODO: Else ifs
-        // TODO: Desugar else ifs conditions
-        let mut else_ifs = Vec::new();
-        for mut else_if in r#if.else_ifs {    
-            let body = self.desugar_block(else_if.body, ty.clone());
-            let assign_id = next_id();
-            let assign = body.returns.map(|expr| Stmt::VariableAssign {
-                id: assign_id,
-                name: (name.clone(), Span::default()),
-                value: expr,
-            }).unwrap();
-            self.context.resolve(assign_id, 0, Some(ty.clone()), id);
-            else_if.body = body.rest.ignore_direction();
-            else_if.body.push((assign, Span::default()));
-            else_ifs.push(else_if);
-        }
-        r#if.else_ifs = else_ifs;
-
-        // TODO: Else
-
-        let else_body = self.desugar_block(r#if.otherwise, ty.clone());
-        
-        let else_assign_id = next_id();
-        let assign = else_body.returns.map(|expr| Stmt::VariableAssign {
-            id: else_assign_id,
-            name: (name.clone(), Span::default()),
-            value: expr,
-        }).unwrap();
-        self.context.resolve(else_assign_id, 0, Some(ty.clone()), id);
-        
-        r#if.otherwise = else_body.rest.ignore_direction();
-        r#if.otherwise.push((assign, Span::default()));
-        // TODO: Construct If
-        let r#if = If {
-            then: r#if.then,
-            else_ifs: r#if.else_ifs,
-            otherwise: r#if.otherwise,
-        };
-        
-        // TODO: Return variable __tmp__
-        // TODO: Use Stmt::If
-        insert_before.push((Stmt::Expression(Expr::If(r#if, Ty::Void), ty.clone()), Span::default()));
-        DesugaredAst::new(tmp_var_read, Rest::InsertBefore(insert_before))
+        (id, name)
     }
 
-    fn desugar_else_if() {}
+    fn new_var_read(&mut self, name: String, ty: Ty, points_to: Id) -> ir::Expr {
+        let read_id = next_id();
+        let read = ir::Expr::Variable(read_id, name, ty.clone());
+        self.context.resolve(read_id, 0, Some(ty), points_to);
+        read
+    }
 
-    fn desugar_fun(&mut self, mut fun: Box<Function<Stmt>>) -> Box<Function<Stmt>> {
+    fn new_var_assign(&mut self, name: String, value: ir::Expr, ty: Ty, points_to: Id) -> ir::Stmt {
+        let id = next_id();
+        let name = (name, Span::default());
+        let assign = ir::Stmt::VariableAssign { id, name, value };
+        self.context.resolve(id, 0, Some(ty), points_to);
+        assign
+    }
+
+    fn desugar_if_stmt(&mut self, r#if: If<ty::Expr, ty::Stmt>) -> DesugaredAst<Spanned<ir::Stmt>> {
+        let mut insert_before = Vec::new();
+        let mut desugar_inner = |inner: IfInner<ty::Expr, ty::Stmt>| -> IfInner<ir::Expr, ir::Stmt> {
+            let mut condition_desugar = self.desugar_expr(inner.condition.0);
+            insert_before.append(&mut condition_desugar.rest);
+            let condition = (condition_desugar.returns.unwrap(), inner.condition.1);
+
+            IfInner {
+                condition,
+                body: self.desugar_statements(inner.body),
+            }
+        };
+
+        let r#if = If {
+            then: Box::new(desugar_inner(*r#if.then)),
+            else_ifs: r#if
+                .else_ifs
+                .into_iter()
+                .map(|ef| desugar_inner(ef))
+                .collect(),
+            otherwise: self.desugar_statements(r#if.otherwise),
+        };
+        let if_stmt = ir::Stmt::If(r#if);
+        // TODO: Span
+        DesugaredAst::new((if_stmt, Span::default()), insert_before)
+    }
+
+    fn desugar_if_expr(
+        &mut self,
+        r#if: If<ty::Expr, ty::Stmt>,
+        ty: Ty,
+    ) -> DesugaredAst<ir::Expr> {
+        let mut insert_before = Vec::new();
+        let (final_var_id, final_var_name) = self.init_new_var(&mut insert_before, ty.clone());
+
+        fn desugar_inner_if_body(
+            ir: &mut IR,
+            body: Vec<Spanned<ty::Stmt>>,
+            id: Id,
+            name: String,
+            ty: Ty,
+        ) -> Vec<Spanned<ir::Stmt>> {
+            let body = ir.desugar_block(body, ty.clone());
+            let assign = body
+                .returns
+                .map(|expr| ir.new_var_assign(name.clone(), expr, ty.clone(), id));
+            let mut body = body.rest;
+            body.push((assign.unwrap(), Span::default()));
+            body
+        }
+
+        let mut desugar_inner_if =
+            |inner: IfInner<ty::Expr, ty::Stmt>| -> IfInner<ir::Expr, ir::Stmt> {
+                let mut cond = self.desugar_expr(inner.condition.0);
+                insert_before.append(&mut cond.rest);
+
+                IfInner {
+                    condition: (cond.returns.unwrap(), inner.condition.1),
+                    body: desugar_inner_if_body(
+                        self,
+                        inner.body,
+                        final_var_id,
+                        final_var_name.clone(),
+                        ty.clone(),
+                    ),
+                }
+            };
+
+        let r#if = If {
+            then: Box::new(desugar_inner_if(*r#if.then)),
+            else_ifs: r#if
+                .else_ifs
+                .into_iter()
+                .map(|ef| desugar_inner_if(ef))
+                .collect::<Vec<_>>(),
+            otherwise: desugar_inner_if_body(
+                self,
+                r#if.otherwise,
+                final_var_id,
+                final_var_name.clone(),
+                ty.clone(),
+            ),
+        };
+
+        insert_before.push((
+            ir::Stmt::If(r#if),
+            Span::default(),
+        ));
+        DesugaredAst::new(
+            self.new_var_read(final_var_name, ty, final_var_id),
+            insert_before,
+        )
+    }
+
+    fn desugar_fun(
+        &mut self,
+        fun: Box<Function<ty::Stmt>>,
+    ) -> Box<Function<Vec<Spanned<ir::Stmt>>>> {
+        let mut ir_fun = Function {
+            proto: fun.proto,
+            body: (Vec::new(), Span::default()),
+        };
+
         // Mangle param names
-        fun.proto
+        ir_fun
+            .proto
             .0
             .params
             .iter_mut()
             .for_each(|(id, name, _)| self.mangle_var_decl_name(*id, name));
 
-        let fun_ty = fun.proto.0.ty.fun_return_ty();
+        let fun_ty = ir_fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
-            Stmt::Expression(Expr::Block(mut statements, _), _) => {
-                statements = self.desugar_statements(statements);
+            ty::Stmt::Expression(ty::Expr::Block(mut statements, _), _) => {
+                let statements = self.desugar_statements(statements);
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }
-            stmt @ Stmt::Expression(_, _) => {
+            stmt @ ty::Stmt::Expression(_, _) => {
                 let statements = self.desugar_stmt((stmt, fun.body.1)).flatten();
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }
             _ => unreachable!("Invalid function body"),
         };
 
-        fun.body = (
-            Stmt::Expression(Expr::Block(body, fun_ty.clone()), fun_ty),
-            span.clone(),
-        );
+        ir_fun.body = (body, span.clone());
 
         // TODO: Mangle function name
-        fun
+        Box::new(ir_fun)
     }
 
     fn mangle_var_decl_name(&mut self, id: Id, name: &mut String) {
         *name = format!("__{}__{}", name, id);
 
-        dbg!(&name);
         let local = self.context.get_local_mut(id);
         local.name = Some(name.clone())
     }
@@ -375,23 +417,27 @@ impl<'a> IR<'a> {
     fn mangle_var_expr_name(&mut self, id: Id, name: &mut String) {
         let local = self.context.get_pointed_local(id);
         *name = local.name.clone().unwrap();
-        dbg!(name);
     }
 
     fn desugar_fun_return_expr(
         &mut self,
-        mut body: Vec<Spanned<Stmt>>,
+        mut body: Vec<Spanned<ir::Stmt>>,
         ty: Ty,
-    ) -> Vec<Spanned<Stmt>> {
+    ) -> Vec<Spanned<ir::Stmt>> {
         if ty == Ty::Void {
             return body;
         }
 
         let last = body.remove(body.len() - 1);
-        let return_stmt = if matches!(last.0, Stmt::Return(_, _)) {
+        let return_stmt = if matches!(last.0, ir::Stmt::Return(_, _)) {
             last
         } else {
-            (Stmt::Return(Some(last.0.to_expr()), ty), last.1)
+            let expr = if let ir::Stmt::Expression(expr, _) = last.0 {
+                expr
+            } else {
+                unreachable!()
+            };
+            (ir::Stmt::Return(Some(expr), ty), last.1)
         };
 
         body.push(return_stmt);

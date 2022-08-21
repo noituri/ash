@@ -4,10 +4,10 @@ fun main = {
     } else if true {
         5
     } else if false {
-        if true {
+        if false {
             1 + 1
         }
-        if 123 == 1 {
+        if 123 == 122+1 {
             4
         } else {
             1

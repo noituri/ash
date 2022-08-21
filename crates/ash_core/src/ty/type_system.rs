@@ -45,7 +45,11 @@ impl<'a> TypeSystem<'a> {
         Ok(ast)
     }
 
-    fn type_stmt(&mut self, (stmt, span): Spanned<parser::Stmt>, must_return_value: bool) -> Spanned<ty::Stmt> {
+    fn type_stmt(
+        &mut self,
+        (stmt, span): Spanned<parser::Stmt>,
+        must_return_value: bool,
+    ) -> Spanned<ty::Stmt> {
         let stmt = match stmt {
             parser::Stmt::ProtoFunction(proto) => {
                 self.context
@@ -178,11 +182,13 @@ impl<'a> TypeSystem<'a> {
                 otherwise,
             }) => {
                 let (mut then, then_ty) = self.type_if(*then, expr_statement);
-                let (mut else_ifs, mut else_ifs_ty): (Vec<_>, Vec<_>) =
-                    else_ifs.into_iter().map(|ef| self.type_if(ef, expr_statement)).unzip();
+                let (mut else_ifs, mut else_ifs_ty): (Vec<_>, Vec<_>) = else_ifs
+                    .into_iter()
+                    .map(|ef| self.type_if(ef, expr_statement))
+                    .unzip();
                 let (otherwise, otherwise_ty) = self.type_block(otherwise, expr_statement);
 
-                let ty = { 
+                let ty = {
                     let mut conditions = vec![&mut then.condition];
                     for else_if in else_ifs.iter_mut() {
                         conditions.push(&mut else_if.condition);
@@ -217,7 +223,7 @@ impl<'a> TypeSystem<'a> {
                 let mut right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
                 let right_ty = right.ty(self);
                 self.check_type(Ty::Bool, right_ty, span);
-                
+
                 ty::Expr::Unary {
                     op,
                     right,
@@ -227,12 +233,18 @@ impl<'a> TypeSystem<'a> {
             parser::Expr::Binary { left, op, right } => {
                 let mut left = Box::new(self.type_expr(*left, span.clone(), expr_statement));
                 let mut right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
-                
+
                 let left_ty = left.ty(self);
                 let right_ty = right.ty(self);
 
                 // TODO: Better implementation
-                let numeric_ops = &[BinaryOp::Div, BinaryOp::Mod, BinaryOp::Mul, BinaryOp::Sum];
+                let numeric_ops = &[
+                    BinaryOp::Div,
+                    BinaryOp::Mod,
+                    BinaryOp::Mul,
+                    BinaryOp::Sum,
+                    BinaryOp::Sub,
+                ];
                 let other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
                 let num_string_ops = &[BinaryOp::Sum];
 
@@ -244,8 +256,8 @@ impl<'a> TypeSystem<'a> {
                             vec![Ty::I32, Ty::F64]
                         } else if other_ops.contains(&op) {
                             vec![Ty::I32, Ty::F64, Ty::String, Ty::Bool]
-                        }else {
-                            Vec::new()
+                        } else {
+                            unreachable!()
                         };
 
                     self.is_one_of(&expected_ty, &left_ty, span);
@@ -289,20 +301,20 @@ impl<'a> TypeSystem<'a> {
         let statements = statements
             .into_iter()
             .enumerate()
-            .map(|(i, stmt)| self.type_stmt(stmt, i == stmt_len-1))
+            .map(|(i, stmt)| self.type_stmt(stmt, i == stmt_len - 1))
             .collect::<Vec<_>>();
 
         let ty = if !expr_statement {
             statements
-            .last()
-            .map(|(stmt, _)| {
-                if let ty::Stmt::Expression(_, ty) = stmt {
-                    ty.clone()
-                } else {
-                    Ty::Void
-                }
-            })
-            .unwrap_or_default()
+                .last()
+                .map(|(stmt, _)| {
+                    if let ty::Stmt::Expression(_, ty) = stmt {
+                        ty.clone()
+                    } else {
+                        Ty::Void
+                    }
+                })
+                .unwrap_or_default()
         } else {
             Ty::Void
         };
