@@ -49,7 +49,7 @@ pub(super) type StmtRecursive<'a> = Recursive<'a, Token, Spanned<Stmt>, Simple<T
 
 pub(super) fn statement_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> {
     recursive(|stmt| {
-        let expr = expression_parser()
+        let expr = stmt_expression_parser(stmt.clone())
             .then_ignore(just(Token::NewLine))
             .map_with_span(|expr, span| (Stmt::Expression(expr), span));
 

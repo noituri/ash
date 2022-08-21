@@ -232,13 +232,13 @@ impl<'a> IR<'a> {
                 DesugaredAst::new(call, rest)
             }
             Expr::If(r#if, ty) => {
-                match ty {
-                    Some(ty) => {
-                        let r#if = self.desugar_if_expr(r#if, ty);
-                        DesugaredAst::new(r#if.returns.unwrap(), r#if.rest)
-                    }
-                    None => DesugaredAst::none() // TODO: It's a statement not expression
-                }
+                // TODO: Detect wether it's an expression or statement
+                let r#if = if ty == Ty::Void {
+                    DesugaredAst::returns(Expr::If(r#if, ty))
+                } else {
+                    self.desugar_if_expr(r#if, ty)
+                };
+                DesugaredAst::new(r#if.returns.unwrap(), r#if.rest)
             }
             _ => DesugaredAst::returns(expr),
         }
@@ -327,7 +327,7 @@ impl<'a> IR<'a> {
         
         // TODO: Return variable __tmp__
         // TODO: Use Stmt::If
-        insert_before.push((Stmt::Expression(Expr::If(r#if, None), ty.clone()), Span::default()));
+        insert_before.push((Stmt::Expression(Expr::If(r#if, Ty::Void), ty.clone()), Span::default()));
         DesugaredAst::new(tmp_var_read, Rest::InsertBefore(insert_before))
     }
 

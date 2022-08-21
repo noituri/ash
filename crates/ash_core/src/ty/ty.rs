@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::prelude::Span;
+
 // TODO: Define some of these types as a part of std lib
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Ty {
@@ -9,6 +11,7 @@ pub(crate) enum Ty {
     F64,
     Void,
     Fun(Vec<Ty>, Box<Ty>),
+    DeferTyCheck(Vec<Ty>, Span)    
 }
 
 impl Default for Ty {
@@ -41,6 +44,7 @@ impl fmt::Display for Ty {
             Self::Fun(params, ty) => {
                 format!("fun({:?}): {}", params, ty)
             }
+            Self::DeferTyCheck(_, _) => "Deferred Type Check".to_owned(),
         };
 
         f.write_str(&ty)
