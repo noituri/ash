@@ -1,5 +1,5 @@
-pub mod ir;
 pub mod ast;
+pub mod ir;
 
-pub use ir::*;
 pub use ast::*;
+pub use ir::*;

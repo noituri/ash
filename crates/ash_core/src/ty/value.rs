@@ -26,7 +26,7 @@ impl Value {
             Ty::F64 => Self::F64(0.0),
             Ty::Void => unreachable!(),
             Ty::Fun(_, _) => todo!(),
-            Ty::DeferTyCheck(types, _) => Self::default_for_ty(types[0].clone())
+            Ty::DeferTyCheck(types, _) => Self::default_for_ty(types[0].clone()),
         }
     }
 }

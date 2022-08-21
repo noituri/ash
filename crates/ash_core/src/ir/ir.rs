@@ -107,7 +107,7 @@ impl<'a> IR<'a> {
                         let expr_stmt = ir::Stmt::Expression(returns, ty);
                         DesugaredAst::new((expr_stmt, span), expr.rest)
                     }
-                    None => DesugaredAst::rest(expr.rest)
+                    None => DesugaredAst::rest(expr.rest),
                 }
             }
             ty::Stmt::VariableAssign {
@@ -189,7 +189,7 @@ impl<'a> IR<'a> {
                     right,
                     ty,
                 };
-                
+
                 DesugaredAst::new(binary, rest)
             }
             ty::Expr::Literal(value) => DesugaredAst::returns(ir::Expr::Literal(value)),
@@ -278,16 +278,17 @@ impl<'a> IR<'a> {
 
     fn desugar_if_stmt(&mut self, r#if: If<ty::Expr, ty::Stmt>) -> DesugaredAst<Spanned<ir::Stmt>> {
         let mut insert_before = Vec::new();
-        let mut desugar_inner = |inner: IfInner<ty::Expr, ty::Stmt>| -> IfInner<ir::Expr, ir::Stmt> {
-            let mut condition_desugar = self.desugar_expr(inner.condition.0);
-            insert_before.append(&mut condition_desugar.rest);
-            let condition = (condition_desugar.returns.unwrap(), inner.condition.1);
+        let mut desugar_inner =
+            |inner: IfInner<ty::Expr, ty::Stmt>| -> IfInner<ir::Expr, ir::Stmt> {
+                let mut condition_desugar = self.desugar_expr(inner.condition.0);
+                insert_before.append(&mut condition_desugar.rest);
+                let condition = (condition_desugar.returns.unwrap(), inner.condition.1);
 
-            IfInner {
-                condition,
-                body: self.desugar_statements(inner.body),
-            }
-        };
+                IfInner {
+                    condition,
+                    body: self.desugar_statements(inner.body),
+                }
+            };
 
         let r#if = If {
             then: Box::new(desugar_inner(*r#if.then)),
@@ -303,11 +304,7 @@ impl<'a> IR<'a> {
         DesugaredAst::new((if_stmt, Span::default()), insert_before)
     }
 
-    fn desugar_if_expr(
-        &mut self,
-        r#if: If<ty::Expr, ty::Stmt>,
-        ty: Ty,
-    ) -> DesugaredAst<ir::Expr> {
+    fn desugar_if_expr(&mut self, r#if: If<ty::Expr, ty::Stmt>, ty: Ty) -> DesugaredAst<ir::Expr> {
         let mut insert_before = Vec::new();
         let (final_var_id, final_var_name) = self.init_new_var(&mut insert_before, ty.clone());
 
@@ -360,10 +357,7 @@ impl<'a> IR<'a> {
             ),
         };
 
-        insert_before.push((
-            ir::Stmt::If(r#if),
-            Span::default(),
-        ));
+        insert_before.push((ir::Stmt::If(r#if), Span::default()));
         DesugaredAst::new(
             self.new_var_read(final_var_name, ty, final_var_id),
             insert_before,
@@ -390,7 +384,7 @@ impl<'a> IR<'a> {
         let fun_ty = ir_fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
-            ty::Stmt::Expression(ty::Expr::Block(mut statements, _), _) => {
+            ty::Stmt::Expression(ty::Expr::Block(statements, _), _) => {
                 let statements = self.desugar_statements(statements);
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }

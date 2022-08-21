@@ -197,7 +197,11 @@ impl<'a> Resolver<'a> {
             }
             Expr::Group(expr) => self.resolve_expr(expr, span),
             Expr::Block(stmts) => self.block(stmts),
-            Expr::If(If { then, else_ifs, otherwise }) => {
+            Expr::If(If {
+                then,
+                else_ifs,
+                otherwise,
+            }) => {
                 let (cond, cond_span) = &then.condition;
                 self.resolve_expr(cond, cond_span);
                 self.resolve_statements(&then.body);

@@ -43,8 +43,8 @@ pub(super) fn block_parser<'a>(
         .padded_by(just(Token::NewLine).repeated())
         .then_ignore(just(Token::RBrace))
         .map(Expr::Block)
-        // .recover_with(skip_until([Token::LBrace, Token::RBrace], |_| Expr::Block(Vec::new())))
-        // .recover_with(nested_delimiters(Token::LBrace, Token::RBrace, [], |_| Expr::Block(Vec::new())))
+    // .recover_with(skip_until([Token::LBrace, Token::RBrace], |_| Expr::Block(Vec::new())))
+    // .recover_with(nested_delimiters(Token::LBrace, Token::RBrace, [], |_| Expr::Block(Vec::new())))
 }
 
 pub(super) fn type_parser() -> impl Parser<Token, Ty, Error = Simple<Token>> {

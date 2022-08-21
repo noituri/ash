@@ -10,7 +10,8 @@ use super::{
     function::call_parser,
     literal::literal_parser,
     operator::{operator_parser, BinaryOp, UnaryOp},
-    stmt::Stmt, If,
+    stmt::Stmt,
+    If,
 };
 
 #[derive(Debug, Clone)]
@@ -39,7 +40,7 @@ impl Expr {
     pub fn block_data(self) -> Vec<Spanned<Stmt>> {
         match self {
             Self::Block(data) => data,
-            _ => unreachable!("Not block expression")
+            _ => unreachable!("Not block expression"),
         }
     }
 }
@@ -48,8 +49,7 @@ pub(super) type ExprRecursive<'a> = Recursive<'a, Token, Expr, Simple<Token>>;
 
 pub(super) fn expression_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone {
     recursive(|expr| {
-        let variable = ident_parser()
-            .map(|name| Expr::Variable(next_id(), name));
+        let variable = ident_parser().map(|name| Expr::Variable(next_id(), name));
         let group = expr
             .clone()
             .delimited_by(just(Token::LParen), just(Token::RParen))

@@ -11,7 +11,7 @@ pub(crate) enum Ty {
     F64,
     Void,
     Fun(Vec<Ty>, Box<Ty>),
-    DeferTyCheck(Vec<Ty>, Span)    
+    DeferTyCheck(Vec<Ty>, Span),
 }
 
 impl Default for Ty {

@@ -1,7 +1,7 @@
 use crate::{core::Spanned, lexer::token::Token};
 use chumsky::prelude::*;
 
-use super::{common::block_parser, expression_parser, Expr, StmtRecursive, Stmt};
+use super::{common::block_parser, expression_parser, Expr, StmtRecursive};
 
 #[derive(Debug, Clone)]
 pub(crate) struct If<E, S> {
@@ -37,9 +37,11 @@ pub(super) fn if_parser<'a>(
     then.labelled("if")
         .then(else_if.labelled("else if").repeated())
         .then(otherwise.labelled("else").or_not())
-        .map(|((then, else_ifs), otherwise)| Expr::If(If {
-            then: Box::new(then),
-            else_ifs,
-            otherwise: otherwise.unwrap_or(Vec::new()),
-        }))
+        .map(|((then, else_ifs), otherwise)| {
+            Expr::If(If {
+                then: Box::new(then),
+                else_ifs,
+                otherwise: otherwise.unwrap_or(Vec::new()),
+            })
+        })
 }

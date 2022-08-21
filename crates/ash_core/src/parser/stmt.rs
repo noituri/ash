@@ -11,9 +11,10 @@ use chumsky::prelude::*;
 use super::{
     annotation::annotation_parser,
     common::block_parser,
+    conditional::if_parser,
     expr::{expression_parser, Expr},
     function::{function_parser, function_proto_parser, return_parser},
-    variable::{variable_assign_parse, variable_decl_parse}, conditional::if_parser,
+    variable::{variable_assign_parse, variable_decl_parse},
 };
 
 #[derive(Debug, Clone)]
@@ -67,5 +68,7 @@ pub(super) fn statement_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Si
 pub(super) fn stmt_expression_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a {
-    if_parser(stmt.clone()).or(block_parser(stmt)).or(expression_parser())
+    if_parser(stmt.clone())
+        .or(block_parser(stmt))
+        .or(expression_parser())
 }

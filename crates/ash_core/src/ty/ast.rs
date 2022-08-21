@@ -1,12 +1,15 @@
 use crate::{
     core::{Annotation, Id, Spanned},
-    parser::{operator::{BinaryOp, UnaryOp}, conditional::IfInner, If},
+    parser::{
+        operator::{BinaryOp, UnaryOp},
+        If,
+    },
 };
 
 use super::{
     function::{Function, ProtoFunction},
     ty::Ty,
-    Value, TypeSystem,
+    TypeSystem, Value,
 };
 
 #[derive(Debug)]
