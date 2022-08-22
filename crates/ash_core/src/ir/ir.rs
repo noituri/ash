@@ -135,7 +135,7 @@ impl<'a> IR<'a> {
                 let proto_stmt = ir::Stmt::ProtoFunction(proto);
                 DesugaredAst::returns((proto_stmt, span))
             }
-            ty::Stmt::While(mut cond, body) => {
+            ty::Stmt::While(cond, body) => {
                 let cond_expr = self.desugar_expr(cond.0);
                 let body = self.desugar_statements(body);
                 let r#while = ir::Stmt::While((cond_expr.returns.unwrap(), cond.1), body);

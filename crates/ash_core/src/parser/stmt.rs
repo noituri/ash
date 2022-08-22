@@ -14,7 +14,8 @@ use super::{
     conditional::if_parser,
     expr::{expression_parser, Expr},
     function::{function_parser, function_proto_parser, return_parser},
-    variable::{variable_assign_parse, variable_decl_parse}, loops::while_parser,
+    loops::while_parser,
+    variable::{variable_assign_parse, variable_decl_parse},
 };
 
 #[derive(Debug, Clone)]

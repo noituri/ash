@@ -1,6 +1,5 @@
-use std::error::Error;
-use std::{fs, io};
 use std::path::PathBuf;
+use std::{fs, io};
 
 use once_cell::sync::OnceCell;
 use regex::Regex;
