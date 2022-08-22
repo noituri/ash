@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::core::{AshResult, Context, Source, StringError};
 use crate::ir::IR;
 use crate::lexer::Lexer;
@@ -10,16 +12,14 @@ pub fn build(source: &Source) -> AshResult<(), String> {
     let tokens = lexer.scan(source.inner()).string_err()?;
     let parser = Parser::new();
     let ast = parser.parse(tokens).string_err()?;
-    let mut context = Context::new();
+    let mut context = Context::new(source.location());
 
     let resolver = Resolver::new(&mut context);
     resolver.run(&ast)?;
     let type_system = TypeSystem::new(&mut context);
     let typed_ast = type_system.run(ast)?;
-    dbg!(&typed_ast);
     let ir = IR::new(&mut context);
     let ir = ir.run(typed_ast);
-    dbg!(&ir);
 
     Ok(())
 }

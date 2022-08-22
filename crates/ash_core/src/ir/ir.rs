@@ -7,6 +7,8 @@ use crate::{
 
 use crate::ir;
 
+use super::bytecode::Compiler;
+
 struct DesugaredAst<T> {
     returns: Option<T>,
     rest: Vec<Spanned<ir::Stmt>>,
@@ -63,7 +65,10 @@ impl<'a> IR<'a> {
 
     // TODO: Return Bytecode IR
     pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
-        self.desugar_statements(ast)
+        let ast = self.desugar_statements(ast);
+        let compiler = Compiler::new(self.context);
+        compiler.run();
+        ast
     }
 
     fn desugar_statements(&mut self, statements: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {

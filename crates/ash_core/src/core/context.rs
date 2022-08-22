@@ -6,6 +6,7 @@ use super::{Env, Id};
 
 pub struct Context {
     env: Env,
+    location: String,
     locals: HashMap<Id, Local>,
 }
 
@@ -19,7 +20,7 @@ pub(crate) struct Local {
 }
 
 impl Context {
-    pub fn new() -> Self {
+    pub fn new(location: String) -> Self {
         // TODO: Define globals
         // TODO: Desugar 'last expression returns value'
         let env = Env::default();
@@ -33,7 +34,7 @@ impl Context {
         //         depth: 0,
         //     },
         // )]);
-        Self { env, locals }
+        Self { env, location, locals }
     }
 
     pub fn get_env(&self) -> &Env {
@@ -98,5 +99,9 @@ impl Context {
                 points_to: Some(points_to),
             },
         );
+    }
+
+    pub fn location(&self) -> &str {
+        &self.location
     }
 }
