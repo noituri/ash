@@ -14,7 +14,7 @@ use super::{
     conditional::if_parser,
     expr::{expression_parser, Expr},
     function::{function_parser, function_proto_parser, return_parser},
-    variable::{variable_assign_parse, variable_decl_parse},
+    variable::{variable_assign_parse, variable_decl_parse}, loops::while_parser,
 };
 
 #[derive(Debug, Clone)]
@@ -22,6 +22,7 @@ pub(crate) enum Stmt {
     Annotation(Spanned<Annotation>, Box<Spanned<Stmt>>),
     ProtoFunction(ProtoFunction),
     Function(Box<Function<Stmt>>),
+    While(Spanned<Expr>, Vec<Spanned<Stmt>>),
     VariableDecl {
         id: Id,
         name: String,
@@ -57,6 +58,7 @@ pub(super) fn statement_parser() -> impl Parser<Token, Spanned<Stmt>, Error = Si
         annotation_parser(stmt.clone())
             .or(function_parser(stmt.clone()))
             .or(function_proto_parser())
+            .or(while_parser(stmt.clone()))
             .or(variable_decl_parse(stmt.clone()))
             .or(variable_assign_parse(stmt.clone()))
             .or(return_parser(stmt))

@@ -12,3 +12,4 @@ pub(crate) mod operator;
 pub(crate) mod parser;
 pub(crate) mod stmt;
 mod variable;
+mod loops;

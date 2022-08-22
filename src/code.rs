@@ -1,9 +1,12 @@
 use crate::cli::RunOptions;
 use crate::failure::report;
 use ash_core::prelude as sv;
-use std::error::Error;
+use anyhow::{bail, Result};
 
-pub fn run(options: RunOptions) -> Result<(), Box<dyn Error>> {
+pub fn run(options: RunOptions) -> Result<()> {
+    if !options.path.exists() {
+        bail!("Path does not exist");
+    }
     if options.path.is_file() {
         let src = sv::Source::from_file(options.path)?;
         let result = sv::run(&src);

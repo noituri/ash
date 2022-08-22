@@ -26,6 +26,7 @@ pub(crate) enum Stmt {
         name: Spanned<String>,
         value: Expr,
     },
+    While(Spanned<Expr>, Vec<Spanned<Stmt>>),
     If(If<Expr, Stmt>),
     Return(Option<Expr>, Ty),
     Expression(Expr, Ty),
@@ -40,7 +41,6 @@ pub(crate) enum Expr {
         args: Vec<Expr>,
         ty: Ty,
     },
-    Block(Vec<Spanned<Stmt>>, Ty),
     Unary {
         op: UnaryOp,
         right: Box<Expr>,

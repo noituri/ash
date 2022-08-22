@@ -9,3 +9,4 @@ edition = "2021"
 ash_core = { "path" = "./crates/ash_core" }
 argh = "0.1"
 ariadne = "0.1"
+anyhow = "1.0"

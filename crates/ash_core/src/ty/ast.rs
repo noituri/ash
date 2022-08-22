@@ -28,8 +28,7 @@ pub(crate) enum Stmt {
         name: Spanned<String>,
         value: Expr,
     },
-    // TODO:
-    // If(If), When used as statement
+    While(Spanned<Expr>, Vec<Spanned<Stmt>>),
     Return(Option<Expr>, Ty),
     Expression(Expr, Ty),
 }
@@ -44,6 +43,7 @@ impl Stmt {
             Self::VariableAssign { value, .. } => value.ty(ts),
             Self::Return(_, ty) => ty.clone(),
             Self::Expression(_, ty) => ty.clone(),
+            Self::While(_, _) => Ty::Void,
         }
     }
 

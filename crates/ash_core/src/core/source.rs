@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fs;
+use std::{fs, io};
 use std::path::PathBuf;
 
 use once_cell::sync::OnceCell;
@@ -13,7 +13,7 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn from_file(path: PathBuf) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(path: PathBuf) -> Result<Self, io::Error> {
         let source = fs::read_to_string(&path)?;
         let location = path.as_os_str().to_str().map(ToOwned::to_owned);
         let source = Self {

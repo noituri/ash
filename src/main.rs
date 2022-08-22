@@ -3,5 +3,7 @@ mod code;
 mod failure;
 
 fn main() {
-    cli::init();
+    if let Err(why) = cli::init() {
+        eprintln!("Error occurred: {why}")
+    }
 }

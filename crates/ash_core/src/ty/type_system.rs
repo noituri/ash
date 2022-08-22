@@ -145,6 +145,15 @@ impl<'a> TypeSystem<'a> {
 
                 ty::Stmt::Return(expr.map(|e| e.0), ty)
             }
+            parser::Stmt::While(cond, body) => {
+                let mut cond_expr = self.type_expr(cond.0, cond.1.clone(), false);
+                let cond_ty = cond_expr.ty(self);
+                self.check_type(Ty::Bool, cond_ty, cond.1.clone());
+
+                let body = self.type_block(body, true);
+
+                ty::Stmt::While((cond_expr, cond.1), body.0)
+            }
             parser::Stmt::Expression(expr) => {
                 let mut expr = self.type_expr(expr, span.clone(), !must_return_value);
                 let ty = expr.ty(self);
@@ -304,7 +313,9 @@ impl<'a> TypeSystem<'a> {
             .map(|(i, stmt)| self.type_stmt(stmt, i == stmt_len - 1))
             .collect::<Vec<_>>();
 
-        let ty = if !expr_statement {
+        let ty = if expr_statement {
+            Ty::Void
+        } else {
             statements
                 .last()
                 .map(|(stmt, _)| {
@@ -315,8 +326,6 @@ impl<'a> TypeSystem<'a> {
                     }
                 })
                 .unwrap_or_default()
-        } else {
-            Ty::Void
         };
         (statements, ty)
     }

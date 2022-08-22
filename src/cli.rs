@@ -1,6 +1,7 @@
 use crate::code;
 use argh::FromArgs;
 use std::path::PathBuf;
+use anyhow::Result;
 
 /// All commands
 #[derive(FromArgs, Debug)]
@@ -24,9 +25,11 @@ pub struct RunOptions {
     pub path: PathBuf,
 }
 
-pub fn init() {
+pub fn init() -> Result<()> {
     let top_level: TopLevel = argh::from_env();
     match top_level.nested {
-        CliOptions::Run(options) => code::run(options).unwrap(),
+        CliOptions::Run(options) => code::run(options)?,
     }
+
+    Ok(())
 }

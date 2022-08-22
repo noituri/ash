@@ -158,6 +158,10 @@ impl<'a> Resolver<'a> {
                 }
                 self.current_function = prev;
             }
+            Stmt::While((cond, span), body) => {
+                self.resolve_expr(cond, span);
+                self.resolve_statements(body);
+            }
             Stmt::Return(expr) => {
                 if self.current_function.is_none() {
                     self.new_error("return can not be used outside of function", span.clone())
