@@ -1,3 +1,5 @@
+use ash_bytecode::prelude::Chunk;
+
 use crate::{
     core::{next_id, Context, Id, Spanned},
     parser::{conditional::IfInner, If},
@@ -64,11 +66,10 @@ impl<'a> IR<'a> {
     }
 
     // TODO: Return Bytecode IR
-    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
+    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
         let ast = self.desugar_statements(ast);
         let compiler = Compiler::new(self.context);
-        compiler.run();
-        ast
+        compiler.run(ast)
     }
 
     fn desugar_statements(&mut self, statements: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {

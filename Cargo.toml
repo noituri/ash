@@ -8,6 +8,7 @@ edition = "2021"
 [features]
 default = ["vm"]
 vm = ["dep:ash_vm"]
+debug_info = ["ash_vm?/debug_info"]
 
 [dependencies]
 ash_core = { path = "./crates/ash_core" }
