@@ -10,8 +10,8 @@ default = ["vm"]
 vm = ["dep:ash_vm"]
 
 [dependencies]
-ash_core = { "path" = "./crates/ash_core" }
+ash_core = { path = "./crates/ash_core" }
 argh = "0.1"
 ariadne = "0.1"
 anyhow = "1.0"
-ash_vm = { "path" = "./crates/ash_vm", optional = true }
+ash_vm = { path = "./crates/ash_vm", optional = true }

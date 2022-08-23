@@ -34,6 +34,16 @@ impl Chunk {
         self.code.push(byte);
     }
 
+    #[inline]
+    pub fn get_byte(&self, offset: usize) -> u8 {
+        self.code[offset]
+    }
+
+    #[inline]
+    pub fn get_const(&self, index: usize) -> &Value {
+        &self.constants[index]
+    }
+
     pub fn print(&self, name: &str) {
         println!("-= {name} =-");
 

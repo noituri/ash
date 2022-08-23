@@ -33,7 +33,7 @@ impl From<u8> for OpCode {
 }
 
 impl OpCode {
-    pub(crate) fn print(&self, chunk: &Chunk, offset: usize) -> usize {
+    pub fn print(&self, chunk: &Chunk, offset: usize) -> usize {
         match self {
            Self::Return => {
                 println!("{}", self.to_string());
