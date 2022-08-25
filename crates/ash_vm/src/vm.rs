@@ -33,19 +33,19 @@ impl<'a> VM<'a> {
             }
 
             match instr {
-                OpCode::Return => {
+                OpCode::Ret => {
                     println!("{}", self.pop().to_string());
                     return Ok(());
                 }
-                OpCode::Constant => {
+                OpCode::Const => {
                     let constant = self.read_const();
                     self.push(constant);
                 }
-                OpCode::ConstantLong => {
+                OpCode::ConstLong => {
                     let constant = self.read_const_long();
                     self.push(constant);
                 }
-                OpCode::Negate => {
+                OpCode::Neg => {
                     let v = self.pop();
                     self.push(v.neg());
                 }
@@ -61,8 +61,8 @@ impl<'a> VM<'a> {
     where
         F: FnOnce(Value, Value) -> Value,
     {
-        let a = self.pop();
         let b = self.pop();
+        let a = self.pop();
         self.push(op_f(a, b))
     }
 

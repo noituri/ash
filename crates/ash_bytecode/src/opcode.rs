@@ -4,10 +4,10 @@ use crate::prelude::Chunk;
 
 #[repr(u8)]
 pub enum OpCode {
-    Return = 0,
-    Constant = 1,
-    ConstantLong = 2,
-    Negate = 3,
+    Ret = 0,
+    Const = 1,
+    ConstLong = 2,
+    Neg = 3,
     Sum = 4,
     Sub = 5,
     Mul = 6,
@@ -17,10 +17,10 @@ pub enum OpCode {
 impl fmt::Display for OpCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::Return => "OP_RETURN",
-            Self::Constant => "OP_CONSTANT",
-            Self::ConstantLong => "OP_CONSTANT_LONG",
-            Self::Negate => "OP_NEGATE",
+            Self::Ret => "OP_RET",
+            Self::Const => "OP_CONST",
+            Self::ConstLong => "OP_CONST_LONG",
+            Self::Neg => "OP_NEG",
             Self::Sum => "OP_SUM",
             Self::Sub => "OP_SUB",
             Self::Mul => "OP_MUL",
@@ -33,47 +33,47 @@ impl fmt::Display for OpCode {
 
 impl From<u8> for OpCode {
     fn from(b: u8) -> Self {
-        match b {
-            0 => Self::Return,
-            1 => Self::Constant,
-            2 => Self::ConstantLong,
-            3 => Self::Negate,
+       match b {
+            0 => Self::Ret,
+            1 => Self::Const,
+            2 => Self::ConstLong,
+            3 => Self::Neg,
             4 => Self::Sum,
             5 => Self::Sub,
             6 => Self::Mul,
             7 => Self::Div,
-            _ => unreachable!("Operation does not exist: {b}"),
-        }
+            _ => unreachable!("Operation does not exist: {b}")
+       } 
     }
 }
 
 impl OpCode {
     pub fn print(&self, chunk: &Chunk, offset: usize) -> usize {
         match self {
-            Self::Return | Self::Negate | Self::Sum | Self::Sub | Self::Mul | Self::Div => {
+           Self::Ret | Self::Neg | Self::Sum | Self::Sub | Self::Mul | Self::Div => {
                 println!("{}", self.to_string());
                 offset + 1
-            }
-            Self::Constant => {
-                let constant = chunk.code[offset + 1];
+           } 
+           Self::Const => {
+                let constant = chunk.code[offset+1];
                 let value = &chunk.constants[constant as usize];
-                println!("{} {:>4} {}", self.to_string(), constant, value.to_string());
+                println!("{} `{}` at {}", self.to_string(), value.to_string(), constant);
                 offset + 2
-            }
-            Self::ConstantLong => {
+           }
+           Self::ConstLong => {
                 let constant = {
-                    let c1 = chunk.code[offset + 1] as usize;
-                    let c2 = chunk.code[offset + 2] as usize;
-                    let c3 = chunk.code[offset + 3] as usize;
+                    let c1 = chunk.code[offset+1] as usize;
+                    let c2 = chunk.code[offset+2] as usize;
+                    let c3 = chunk.code[offset+3] as usize;
 
                     // Little-edian
                     c1 | (c2 << 8) | (c3 << 16)
                 };
 
                 let value = &chunk.constants[constant];
-                println!("{} {:>4} {}", self.to_string(), constant, value.to_string());
+                println!("{} `{}` at {}", self.to_string(), value.to_string(), constant);
                 offset + 4
-            }
+           }
         }
-    }
+    } 
 }

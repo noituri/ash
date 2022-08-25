@@ -19,10 +19,10 @@ impl Chunk {
     pub fn write_const(&mut self, value: Value) {
         let constant_index = self.add_const(value);
         if constant_index < 256 {
-            self.add_instr(OpCode::Constant);
+            self.add_instr(OpCode::Const);
             self.write(constant_index as u8);
         } else {
-            self.add_instr(OpCode::ConstantLong);
+            self.add_instr(OpCode::ConstLong);
             // Little-edian
             self.write((constant_index & 0xff) as u8);
             self.write(((constant_index >> 8) & 0xff) as u8);
