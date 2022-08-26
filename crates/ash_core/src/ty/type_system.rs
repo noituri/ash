@@ -1,8 +1,10 @@
+use std::vec;
+
 use chumsky::prelude::Simple;
 
 use crate::{
     core::{Context, Spanned},
-    parser::{self, conditional::IfInner, operator::BinaryOp, If},
+    parser::{self, conditional::IfInner, operator::{BinaryOp, UnaryOp}, If},
     prelude::{AshResult, Span},
 };
 
@@ -15,7 +17,6 @@ pub(crate) struct TypeSystem<'a> {
     errors: Vec<Simple<String>>,
     parsing_call: bool,
     current_func_returns: Option<Ty>,
-    last_expr: bool,
 }
 
 impl<'a> TypeSystem<'a> {
@@ -25,7 +26,6 @@ impl<'a> TypeSystem<'a> {
             errors: Vec::new(),
             parsing_call: false,
             current_func_returns: None,
-            last_expr: false,
         }
     }
 
@@ -229,9 +229,13 @@ impl<'a> TypeSystem<'a> {
             parser::Expr::Group(expr) => self.type_expr(*expr, span, expr_statement),
             parser::Expr::Unary { op, right } => {
                 // TODO: Find trait implementation for the operator and operand
+                let expected_ty = match op {
+                    UnaryOp::Neg => vec![Ty::F64, Ty::I32],
+                    UnaryOp::Not => vec![Ty::Bool]
+                };
                 let mut right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
                 let right_ty = right.ty(self);
-                self.check_type(Ty::Bool, right_ty, span);
+                self.is_one_of(&expected_ty, &right_ty, span);
 
                 ty::Expr::Unary {
                     op,
@@ -249,10 +253,14 @@ impl<'a> TypeSystem<'a> {
                 // TODO: Better implementation
                 let numeric_ops = &[
                     BinaryOp::Div,
-                    BinaryOp::Mod,
+                    BinaryOp::Rem,
                     BinaryOp::Mul,
                     BinaryOp::Sum,
                     BinaryOp::Sub,
+                    BinaryOp::Gt,
+                    BinaryOp::Lt,
+                    BinaryOp::Gte,
+                    BinaryOp::Lte,
                 ];
                 let other_ops = &[BinaryOp::Equal, BinaryOp::NotEqual];
                 let num_string_ops = &[BinaryOp::Sum];

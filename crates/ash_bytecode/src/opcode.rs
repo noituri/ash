@@ -12,6 +12,16 @@ pub enum OpCode {
     Sub = 5,
     Mul = 6,
     Div = 7,
+    Rem = 8,
+    True = 9,
+    False = 10,
+    Not = 11,
+    Eq = 12,
+    Neq = 13,
+    Gt = 14,
+    Lt = 15,
+    Gte = 16,
+    Lte = 17,
 }
 
 impl fmt::Display for OpCode {
@@ -25,6 +35,16 @@ impl fmt::Display for OpCode {
             Self::Sub => "OP_SUB",
             Self::Mul => "OP_MUL",
             Self::Div => "OP_DIV",
+            Self::Rem => "OP_REM",
+            Self::True => "OP_TRUE",
+            Self::False => "OP_FALSE",
+            Self::Not => "OP_NOT",
+            Self::Eq => "OP_EQ",
+            Self::Neq => "OP_NEQ",
+            Self::Gt => "OP_GT",
+            Self::Lt => "OP_LT",
+            Self::Gte => "OP_GTE",
+            Self::Lte => "OP_LTE",
         };
 
         f.write_str(s)
@@ -33,7 +53,7 @@ impl fmt::Display for OpCode {
 
 impl From<u8> for OpCode {
     fn from(b: u8) -> Self {
-       match b {
+        match b {
             0 => Self::Ret,
             1 => Self::Const,
             2 => Self::ConstLong,
@@ -42,38 +62,73 @@ impl From<u8> for OpCode {
             5 => Self::Sub,
             6 => Self::Mul,
             7 => Self::Div,
-            _ => unreachable!("Operation does not exist: {b}")
-       } 
+            8 => Self::Rem,
+            9 => Self::True,
+            10 => Self::False,
+            11 => Self::Not,
+            12 => Self::Eq,
+            13 => Self::Neq,
+            14 => Self::Gt,
+            15 => Self::Lt,
+            16 => Self::Gte,
+            17 => Self::Lte,
+            _ => unreachable!("Operation does not exist: {b}"),
+        }
     }
 }
 
 impl OpCode {
     pub fn print(&self, chunk: &Chunk, offset: usize) -> usize {
         match self {
-           Self::Ret | Self::Neg | Self::Sum | Self::Sub | Self::Mul | Self::Div => {
+            Self::Ret
+            | Self::Neg
+            | Self::Sum
+            | Self::Sub
+            | Self::Mul
+            | Self::Div
+            | Self::Rem
+            | Self::True
+            | Self::False
+            | Self::Not
+            | Self::Eq
+            | Self::Neq
+            | Self::Gt
+            | Self::Lt
+            | Self::Gte 
+            | Self::Lte => {
                 println!("{}", self.to_string());
                 offset + 1
-           } 
-           Self::Const => {
-                let constant = chunk.code[offset+1];
+            }
+            Self::Const => {
+                let constant = chunk.code[offset + 1];
                 let value = &chunk.constants[constant as usize];
-                println!("{} `{}` at {}", self.to_string(), value.to_string(), constant);
+                println!(
+                    "{} `{}` at {}",
+                    self.to_string(),
+                    value.to_string(),
+                    constant
+                );
                 offset + 2
-           }
-           Self::ConstLong => {
+            }
+            Self::ConstLong => {
                 let constant = {
-                    let c1 = chunk.code[offset+1] as usize;
-                    let c2 = chunk.code[offset+2] as usize;
-                    let c3 = chunk.code[offset+3] as usize;
+                    let c1 = chunk.code[offset + 1] as usize;
+                    let c2 = chunk.code[offset + 2] as usize;
+                    let c3 = chunk.code[offset + 3] as usize;
 
                     // Little-edian
                     c1 | (c2 << 8) | (c3 << 16)
                 };
 
                 let value = &chunk.constants[constant];
-                println!("{} `{}` at {}", self.to_string(), value.to_string(), constant);
+                println!(
+                    "{} `{}` at {}",
+                    self.to_string(),
+                    value.to_string(),
+                    constant
+                );
                 offset + 4
-           }
+            }
         }
-    } 
+    }
 }

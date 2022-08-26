@@ -56,7 +56,8 @@ impl<'a> Compiler<'a> {
             Expr::Unary { op, right, .. } => {
                 self.compile_expr(*right);
                 match op {
-                    UnaryOp::Neg => self.add_instr(OpCode::Neg)
+                    UnaryOp::Neg => self.add_instr(OpCode::Neg),
+                    UnaryOp::Not => self.add_instr(OpCode::Not),
                 }
             }
             Expr::Binary { left, op, right, .. } => {
@@ -68,7 +69,13 @@ impl<'a> Compiler<'a> {
                     BinaryOp::Sub => OpCode::Sub,
                     BinaryOp::Mul => OpCode::Mul,
                     BinaryOp::Div => OpCode::Div,
-                    _ => unimplemented!()
+                    BinaryOp::Rem => OpCode::Rem,
+                    BinaryOp::Equal => OpCode::Eq,
+                    BinaryOp::NotEqual => OpCode::Neq,
+                    BinaryOp::Gt => OpCode::Gt,                    
+                    BinaryOp::Lt => OpCode::Lt,
+                    BinaryOp::Gte => OpCode::Gte,
+                    BinaryOp::Lte => OpCode::Lte,
                 };
 
                 self.add_instr(instr);
@@ -78,12 +85,20 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_literal(&mut self, value: ty::Value) {
-        let value = match value {
-            ty::Value::F64(v) => Value::F64(v),
-            _ => unimplemented!()
-        };
-
-        self.write_const(value);
+        if let ty::Value::Bool(v) = value {
+            if v {
+                self.add_instr(OpCode::True);
+            } else {
+                self.add_instr(OpCode::False);
+            }
+        } else {
+            let value = match value {
+                ty::Value::F64(v) => Value::F64(v),
+                _ => unimplemented!()
+            };
+    
+            self.write_const(value);
+        }
     }
 
     fn current_chunk(&mut self) -> &mut Chunk {

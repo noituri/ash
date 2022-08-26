@@ -7,6 +7,7 @@ use super::expr::Expr;
 #[derive(Debug, Clone)]
 pub(crate) enum UnaryOp {
     Neg,
+    Not,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -15,9 +16,13 @@ pub(crate) enum BinaryOp {
     Sub,
     Mul,
     Div,
-    Mod,
+    Rem,
     Equal,
     NotEqual,
+    Gt,
+    Lt,
+    Gte,
+    Lte,
 }
 
 pub(super) fn operator_parser<'a, P>(
@@ -35,13 +40,17 @@ where
 {
     let minus = just(Token::Minus)
         .repeated()
-        .then(expr)
+        .then(expr.clone())
         .foldr(|_, rhs| Expr::Unary {
             op: UnaryOp::Neg,
             right: Box::new(rhs),
         });
+    let not = just(Token::Bang)
+        .repeated()
+        .then(expr)
+        .foldr(|_, rhs| Expr::Unary { op: UnaryOp::Not, right: Box::new(rhs) });
 
-    minus
+    minus.or(not)
 }
 
 fn binary_parser<'a, P>(expr: P) -> impl Parser<Token, Expr, Error = Simple<Token>> + 'a
@@ -72,17 +81,27 @@ where
             right: Box::new(b),
         });
 
+    let op = just(Token::Gt)
+        .to(BinaryOp::Gt)
+        .or(just(Token::Lt).to(BinaryOp::Gt))
+        .or(just(Token::Gte).to(BinaryOp::Gte))
+        .or(just(Token::Lte).to(BinaryOp::Lte));
+    let ord = sum
+        .clone()
+        .then(op.then(sum).repeated())
+        .foldl(|a, (op, b)| Expr::Binary { left: Box::new(a), op, right: Box::new(b) });
+
     let op = just(Token::DoubleEqual)
         .to(BinaryOp::Equal)
         .or(just(Token::NotEqual).to(BinaryOp::NotEqual));
-    let compare = sum
+    let equality = ord
         .clone()
-        .then(op.then(sum).repeated())
+        .then(op.then(ord).repeated())
         .foldl(|a, (op, b)| Expr::Binary {
             left: Box::new(a),
             op,
             right: Box::new(b),
         });
 
-    compare
+    equality
 }

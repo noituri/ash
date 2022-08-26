@@ -1,5 +1,6 @@
 use super::ty::Ty;
 
+// TODO: Remove it in favor of ash_bytecode::value
 #[derive(Clone, Debug)]
 pub enum Value {
     String(String),

@@ -1,3 +1,5 @@
+use std::ops::{Add, Sub, Mul, Div, Rem};
+
 use crate::prelude::*;
 use ash_bytecode::prelude::*;
 
@@ -47,12 +49,25 @@ impl<'a> VM<'a> {
                 }
                 OpCode::Neg => {
                     let v = self.pop();
-                    self.push(v.neg());
+                    self.push(-v);
                 }
-                OpCode::Sum => self.bin_op(Value::sum),
-                OpCode::Sub => self.bin_op(Value::sub),
-                OpCode::Mul => self.bin_op(Value::mul),
-                OpCode::Div => self.bin_op(Value::div),
+                OpCode::Sum => self.bin_op(Add::add),
+                OpCode::Sub => self.bin_op(Sub::sub),
+                OpCode::Mul => self.bin_op(Mul::mul),
+                OpCode::Div => self.bin_op(Div::div),
+                OpCode::Rem => self.bin_op(Rem::rem),
+                OpCode::True => self.push(Value::Bool(true)),
+                OpCode::False => self.push(Value::Bool(false)),
+                OpCode::Not => {
+                    let v = self.pop();
+                    self.push(!v);
+                }
+                OpCode::Eq => self.bin_op(Value::eq),
+                OpCode::Neq => self.bin_op(Value::neq),
+                OpCode::Gt => self.bin_op(Value::gt),
+                OpCode::Lt => self.bin_op(Value::lt),
+                OpCode::Gte => self.bin_op(Value::gte),
+                OpCode::Lte => self.bin_op(Value::lte),
             }
         }
     }
