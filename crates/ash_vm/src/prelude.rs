@@ -1,2 +1,2 @@
-pub use crate::vm::*;
 pub use crate::fault::*;
+pub use crate::vm::*;

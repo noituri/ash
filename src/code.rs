@@ -1,7 +1,7 @@
 use crate::cli::RunOptions;
 use crate::failure::report;
-use ash_core::prelude as ash;
 use anyhow::{bail, Result};
+use ash_core::prelude as ash;
 use ash_vm::prelude::*;
 
 pub fn run(options: RunOptions) -> Result<()> {
@@ -15,7 +15,7 @@ pub fn run(options: RunOptions) -> Result<()> {
                 let mut vm = VM::new(&chunk);
                 vm.run()?;
             }
-            Err(errs) => errs.into_iter().for_each(|err| report::error(&src, err))
+            Err(errs) => errs.into_iter().for_each(|err| report::error(&src, err)),
         }
     } else {
         unimplemented!();

@@ -1,3 +1,3 @@
-pub mod vm;
-pub mod prelude;
 pub mod fault;
+pub mod prelude;
+pub mod vm;

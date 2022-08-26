@@ -34,7 +34,11 @@ impl Context {
         //         depth: 0,
         //     },
         // )]);
-        Self { env, location, locals }
+        Self {
+            env,
+            location,
+            locals,
+        }
     }
 
     pub fn get_env(&self) -> &Env {

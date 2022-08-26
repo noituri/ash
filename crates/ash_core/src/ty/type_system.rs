@@ -4,7 +4,12 @@ use chumsky::prelude::Simple;
 
 use crate::{
     core::{Context, Spanned},
-    parser::{self, conditional::IfInner, operator::{BinaryOp, UnaryOp}, If},
+    parser::{
+        self,
+        conditional::IfInner,
+        operator::{BinaryOp, UnaryOp},
+        If,
+    },
     prelude::{AshResult, Span},
 };
 
@@ -231,7 +236,7 @@ impl<'a> TypeSystem<'a> {
                 // TODO: Find trait implementation for the operator and operand
                 let expected_ty = match op {
                     UnaryOp::Neg => vec![Ty::F64, Ty::I32],
-                    UnaryOp::Not => vec![Ty::Bool]
+                    UnaryOp::Not => vec![Ty::Bool],
                 };
                 let mut right = Box::new(self.type_expr(*right, span.clone(), expr_statement));
                 let right_ty = right.ty(self);

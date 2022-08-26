@@ -48,7 +48,10 @@ where
     let not = just(Token::Bang)
         .repeated()
         .then(expr)
-        .foldr(|_, rhs| Expr::Unary { op: UnaryOp::Not, right: Box::new(rhs) });
+        .foldr(|_, rhs| Expr::Unary {
+            op: UnaryOp::Not,
+            right: Box::new(rhs),
+        });
 
     minus.or(not)
 }
@@ -89,7 +92,11 @@ where
     let ord = sum
         .clone()
         .then(op.then(sum).repeated())
-        .foldl(|a, (op, b)| Expr::Binary { left: Box::new(a), op, right: Box::new(b) });
+        .foldl(|a, (op, b)| Expr::Binary {
+            left: Box::new(a),
+            op,
+            right: Box::new(b),
+        });
 
     let op = just(Token::DoubleEqual)
         .to(BinaryOp::Equal)

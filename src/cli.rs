@@ -1,7 +1,7 @@
 use crate::code;
+use anyhow::Result;
 use argh::FromArgs;
 use std::path::PathBuf;
-use anyhow::Result;
 
 /// All commands
 #[derive(FromArgs, Debug)]

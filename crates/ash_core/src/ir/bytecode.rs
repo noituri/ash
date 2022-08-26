@@ -1,10 +1,10 @@
 use ash_bytecode::prelude::*;
 
 use crate::core::{Context, Spanned};
-use crate::parser::operator::{UnaryOp, BinaryOp};
+use crate::parser::operator::{BinaryOp, UnaryOp};
 use crate::ty;
 
-use super::{Stmt, Expr};
+use super::{Expr, Stmt};
 
 pub(super) struct Compiler<'a> {
     context: &'a Context,
@@ -13,9 +13,9 @@ pub(super) struct Compiler<'a> {
 
 impl<'a> Compiler<'a> {
     pub fn new(context: &'a Context) -> Self {
-        Self { 
+        Self {
             context,
-            chunk: Chunk::default()
+            chunk: Chunk::default(),
         }
     }
 
@@ -46,7 +46,7 @@ impl<'a> Compiler<'a> {
     fn compile_stmt(&mut self, stmt: Stmt) {
         match stmt {
             Stmt::Expression(expr, _) => self.compile_expr(expr),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
@@ -60,7 +60,9 @@ impl<'a> Compiler<'a> {
                     UnaryOp::Not => self.add_instr(OpCode::Not),
                 }
             }
-            Expr::Binary { left, op, right, .. } => {
+            Expr::Binary {
+                left, op, right, ..
+            } => {
                 self.compile_expr(*left);
                 self.compile_expr(*right);
 
@@ -72,7 +74,7 @@ impl<'a> Compiler<'a> {
                     BinaryOp::Rem => OpCode::Rem,
                     BinaryOp::Equal => OpCode::Eq,
                     BinaryOp::NotEqual => OpCode::Neq,
-                    BinaryOp::Gt => OpCode::Gt,                    
+                    BinaryOp::Gt => OpCode::Gt,
                     BinaryOp::Lt => OpCode::Lt,
                     BinaryOp::Gte => OpCode::Gte,
                     BinaryOp::Lte => OpCode::Lte,
@@ -80,7 +82,7 @@ impl<'a> Compiler<'a> {
 
                 self.add_instr(instr);
             }
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
@@ -94,9 +96,9 @@ impl<'a> Compiler<'a> {
         } else {
             let value = match value {
                 ty::Value::F64(v) => Value::F64(v),
-                _ => unimplemented!()
+                _ => unimplemented!(),
             };
-    
+
             self.write_const(value);
         }
     }

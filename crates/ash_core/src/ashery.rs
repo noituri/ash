@@ -1,5 +1,3 @@
-use std::vec;
-
 use ash_bytecode::prelude::Chunk;
 
 use crate::core::{AshResult, Context, Source, StringError};

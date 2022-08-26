@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, Rem};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 use crate::prelude::*;
 use ash_bytecode::prelude::*;

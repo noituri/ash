@@ -94,7 +94,7 @@ impl OpCode {
             | Self::Neq
             | Self::Gt
             | Self::Lt
-            | Self::Gte 
+            | Self::Gte
             | Self::Lte => {
                 println!("{}", self.to_string());
                 offset + 1
