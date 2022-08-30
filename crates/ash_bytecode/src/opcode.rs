@@ -22,6 +22,9 @@ pub enum OpCode {
     Lt = 15,
     Gte = 16,
     Lte = 17,
+    Pop = 18,
+    DefGlobal = 19,
+    DefGlobalLong = 20,
 }
 
 impl fmt::Display for OpCode {
@@ -45,6 +48,9 @@ impl fmt::Display for OpCode {
             Self::Lt => "OP_LT",
             Self::Gte => "OP_GTE",
             Self::Lte => "OP_LTE",
+            Self::Pop => "OP_POP",
+            Self::DefGlobal => "OP_DEF_GLOBAL",
+            Self::DefGlobalLong => "OP_DEF_GLOBAL_LONG",
         };
 
         f.write_str(s)
@@ -72,6 +78,9 @@ impl From<u8> for OpCode {
             15 => Self::Lt,
             16 => Self::Gte,
             17 => Self::Lte,
+            18 => Self::Pop,
+            19 => Self::DefGlobal,
+            20 => Self::DefGlobalLong,
             _ => unreachable!("Operation does not exist: {b}"),
         }
     }
@@ -95,11 +104,12 @@ impl OpCode {
             | Self::Gt
             | Self::Lt
             | Self::Gte
-            | Self::Lte => {
+            | Self::Lte 
+            | Self::Pop => {
                 println!("{}", self.to_string());
                 offset + 1
             }
-            Self::Const => {
+            Self::Const | Self::DefGlobal => {
                 let constant = chunk.code[offset + 1];
                 let value = &chunk.constants[constant as usize];
                 println!(
@@ -110,7 +120,7 @@ impl OpCode {
                 );
                 offset + 2
             }
-            Self::ConstLong => {
+            Self::ConstLong | Self::DefGlobalLong => {
                 let constant = {
                     let c1 = chunk.code[offset + 1] as usize;
                     let c2 = chunk.code[offset + 2] as usize;

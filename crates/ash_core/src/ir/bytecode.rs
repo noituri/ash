@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ash_bytecode::prelude::*;
 
 use crate::core::{Context, Spanned};
@@ -9,6 +11,7 @@ use super::{Expr, Stmt};
 pub(super) struct Compiler<'a> {
     context: &'a Context,
     chunk: Chunk,
+    str_constants: HashMap<String, usize>,
 }
 
 impl<'a> Compiler<'a> {
@@ -16,36 +19,30 @@ impl<'a> Compiler<'a> {
         Self {
             context,
             chunk: Chunk::default(),
+            str_constants: HashMap::new(),
         }
     }
 
     pub fn run(mut self, ast: Vec<Spanned<Stmt>>) -> Chunk {
-        // let mut chunk = Chunk::default();
-        // chunk.write_const(Value::F64(1.0));
-        // chunk.write_const(Value::F64(2.0));
-        // chunk.write_const(Value::F64(3.0));
-        // chunk.add_instr(OpCode::Mul);
-        // chunk.add_instr(OpCode::Sum);
-        // chunk.write_const(Value::F64(4.0));
-        // chunk.write_const(Value::F64(5.0));
-        // chunk.add_instr(OpCode::Neg);
-        // chunk.add_instr(OpCode::Div);
-        // chunk.add_instr(OpCode::Sub);
-        // chunk.add_instr(OpCode::Ret);
-        // chunk.print(self.context.location());
-        // chunk
-
         for (stmt, _) in ast {
-            self.compile_stmt(stmt);
+            self.compile_stmt(stmt, true);
         }
 
         self.add_instr(OpCode::Ret);
         self.chunk
     }
 
-    fn compile_stmt(&mut self, stmt: Stmt) {
+    fn compile_stmt(&mut self, stmt: Stmt, is_global: bool) {
         match stmt {
-            Stmt::Expression(expr, _) => self.compile_expr(expr),
+            Stmt::Expression(expr, _) => {
+                self.compile_expr(expr);
+                self.add_instr(OpCode::Pop);
+            }
+            Stmt::VariableDecl { name, value, .. } => {
+                let name_index = self.compile_identifier(name);
+                self.compile_expr(value);
+                self.def_global(name_index);
+            }
             _ => unimplemented!(),
         }
     }
@@ -103,8 +100,29 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    fn compile_identifier(&mut self, name: String) -> usize {
+        match self.str_constants.get(&name) {
+            Some(index) => *index,
+            None => {
+                let index = self.chunk.add_const(Value::String(name));
+                self.str_constants.insert(name, index);
+                index
+            }
+        }
+    }
+
     fn current_chunk(&mut self) -> &mut Chunk {
         &mut self.chunk
+    }
+
+    fn def_global(&mut self, global_index: usize) {
+        if global_index < 256 {
+            self.add_instr(OpCode::DefGlobal);
+            self.chunk.write(global_index as u8);
+        } else {
+            self.add_instr(OpCode::DefGlobalLong);
+            self.chunk.write_long(global_index);
+        }
     }
 
     fn add_instr(&mut self, op: OpCode) {

@@ -23,11 +23,14 @@ impl Chunk {
             self.write(constant_index as u8);
         } else {
             self.add_instr(OpCode::ConstLong);
-            // Little-edian
-            self.write((constant_index & 0xff) as u8);
-            self.write(((constant_index >> 8) & 0xff) as u8);
-            self.write(((constant_index >> 16) & 0xff) as u8);
+            self.write_long(constant_index);
         }
+    }
+
+    pub fn write_long(&mut self, bytes: usize) {
+        self.write((bytes & 0xff) as u8);
+        self.write(((bytes >> 8) & 0xff) as u8);
+        self.write(((bytes >> 16) & 0xff) as u8);
     }
 
     pub fn write(&mut self, byte: u8) {

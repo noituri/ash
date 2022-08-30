@@ -3,10 +3,12 @@ use std::{
     ops::{Add, Div, Mul, Neg, Not, Rem, Sub},
 };
 
+
 #[derive(Clone)]
 pub enum Value {
     F64(f64),
     Bool(bool),
+    String(String), // TODO: Use GCObject
 }
 
 impl fmt::Display for Value {
@@ -14,6 +16,7 @@ impl fmt::Display for Value {
         let s = match self {
             Self::F64(v) => format!("{:.2}", v),
             Self::Bool(v) => format!("{v}"),
+            Self::String(v) => v.clone(),
         };
 
         f.write_str(&s)
@@ -48,6 +51,7 @@ impl Add for Value {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 + v2),
+            (Self::String(v1), Self::String(v2)) => Self::String(v1 + &v2),
             _ => unreachable!(),
         }
     }
@@ -117,27 +121,34 @@ impl PartialOrd for Value {
 }
 
 impl Value {
-    pub fn eq(self, other: Self) -> Value {
-        Value::Bool(self == other)
+    pub fn eq(self, other: Self) -> Self {
+        Self::Bool(self == other)
     }
 
-    pub fn neq(self, other: Self) -> Value {
+    pub fn neq(self, other: Self) -> Self {
         self.eq(other).not()
     }
 
-    pub fn gt(self, other: Self) -> Value {
-        Value::Bool(self > other)
+    pub fn gt(self, other: Self) -> Self {
+        Self::Bool(self > other)
     }
 
-    pub fn lt(self, other: Self) -> Value {
-        Value::Bool(self < other)
+    pub fn lt(self, other: Self) -> Self {
+        Self::Bool(self < other)
     }
 
-    pub fn gte(self, other: Self) -> Value {
-        Value::Bool(self >= other)
+    pub fn gte(self, other: Self) -> Self {
+        Self::Bool(self >= other)
     }
 
-    pub fn lte(self, other: Self) -> Value {
-        Value::Bool(self <= other)
+    pub fn lte(self, other: Self) -> Self {
+        Self::Bool(self <= other)
+    }
+
+    pub fn string_value(self) -> String {
+        match self {
+            Self::String(v) => v,
+            _ => unreachable!()
+        }
     }
 }

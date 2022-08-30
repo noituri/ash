@@ -1,12 +1,14 @@
-use std::ops::{Add, Div, Mul, Rem, Sub};
+use std::{ops::{Add, Div, Mul, Rem, Sub}, collections::HashMap};
 
-use crate::prelude::*;
+use crate::{prelude::*, memory::Collectable};
 use ash_bytecode::prelude::*;
 
 pub struct VM<'a> {
     chunk: &'a Chunk,
     ip: usize,
+    objects: Vec<&'a dyn Collectable>,
     stack: Vec<Value>,
+    globals: HashMap<String, Value>,
 }
 
 impl<'a> VM<'a> {
@@ -14,7 +16,9 @@ impl<'a> VM<'a> {
         Self {
             chunk,
             ip: 0,
+            objects: Vec::new(),
             stack: Vec::with_capacity(256),
+            globals: HashMap::new(),
         }
     }
 
@@ -68,8 +72,24 @@ impl<'a> VM<'a> {
                 OpCode::Lt => self.bin_op(Value::lt),
                 OpCode::Gte => self.bin_op(Value::gte),
                 OpCode::Lte => self.bin_op(Value::lte),
+                OpCode::Pop => {
+                    let _ = self.pop();
+                },
+                OpCode::DefGlobal => {
+                    let name = self.read_const();
+                    self.def_global(name);
+                }
+                OpCode::DefGlobalLong => {
+                    let name = self.read_const_long();
+                    self.def_global(name);
+                }
             }
         }
+    }
+
+    fn def_global(&mut self, name: Value) {
+                    self.globals.insert(name.string_value(), self.peek().clone());
+                    let _ = self.pop();
     }
 
     fn bin_op<F>(&mut self, op_f: F)
@@ -101,6 +121,10 @@ impl<'a> VM<'a> {
         };
 
         self.chunk.get_const(index).clone()
+    }
+
+    fn peek(&self) -> &Value {
+        self.stack.last().unwrap()
     }
 
     fn push(&mut self, value: Value) {
