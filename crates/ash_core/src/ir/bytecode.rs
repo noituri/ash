@@ -32,7 +32,7 @@ impl<'a> Compiler<'a> {
         self.chunk
     }
 
-    fn compile_stmt(&mut self, stmt: Stmt, is_global: bool) {
+    fn compile_stmt(&mut self, stmt: Stmt, _is_global: bool) {
         match stmt {
             Stmt::Expression(expr, _) => {
                 self.compile_expr(expr);
@@ -104,7 +104,7 @@ impl<'a> Compiler<'a> {
         match self.str_constants.get(&name) {
             Some(index) => *index,
             None => {
-                let index = self.chunk.add_const(Value::String(name));
+                let index = self.chunk.add_const(Value::String(name.clone()));
                 self.str_constants.insert(name, index);
                 index
             }

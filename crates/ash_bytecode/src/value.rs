@@ -3,7 +3,6 @@ use std::{
     ops::{Add, Div, Mul, Neg, Not, Rem, Sub},
 };
 
-
 #[derive(Clone)]
 pub enum Value {
     F64(f64),
@@ -148,7 +147,7 @@ impl Value {
     pub fn string_value(self) -> String {
         match self {
             Self::String(v) => v,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

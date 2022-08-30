@@ -104,7 +104,7 @@ impl OpCode {
             | Self::Gt
             | Self::Lt
             | Self::Gte
-            | Self::Lte 
+            | Self::Lte
             | Self::Pop => {
                 println!("{}", self.to_string());
                 offset + 1
