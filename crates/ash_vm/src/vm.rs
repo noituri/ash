@@ -1,6 +1,9 @@
-use std::{ops::{Add, Div, Mul, Rem, Sub}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    ops::{Add, Div, Mul, Rem, Sub},
+};
 
-use crate::{prelude::*, memory::Collectable};
+use crate::{memory::Collectable, prelude::*};
 use ash_bytecode::prelude::*;
 
 pub struct VM<'a> {
@@ -74,22 +77,35 @@ impl<'a> VM<'a> {
                 OpCode::Lte => self.bin_op(Value::lte),
                 OpCode::Pop => {
                     let _ = self.pop();
-                },
+                }
                 OpCode::DefGlobal => {
                     let name = self.read_const();
-                    self.def_global(name);
+                    self.def_global(name.string_value());
                 }
                 OpCode::DefGlobalLong => {
                     let name = self.read_const_long();
-                    self.def_global(name);
+                    self.def_global(name.string_value());
+                }
+                OpCode::LoadGlobal => {
+                    let name = self.read_const().string_value();
+                    self.load_global(name);
+                }
+                OpCode::LoadGlobalLong => {
+                    let name = self.read_const_long().string_value();
+                    self.load_global(name);
                 }
             }
         }
     }
 
-    fn def_global(&mut self, name: Value) {
-                    self.globals.insert(name.string_value(), self.peek().clone());
-                    let _ = self.pop();
+    fn def_global(&mut self, name: String) {
+        self.globals.insert(name, self.peek().clone());
+        let _ = self.pop();
+    }
+
+    fn load_global(&mut self, name: String) {
+        let value = self.globals.get(&name).unwrap();
+        self.push(value.clone());
     }
 
     fn bin_op<F>(&mut self, op_f: F)

@@ -18,19 +18,19 @@ impl Chunk {
 
     pub fn write_const(&mut self, value: Value) {
         let constant_index = self.add_const(value);
-        if constant_index < 256 {
-            self.add_instr(OpCode::Const);
-            self.write(constant_index as u8);
-        } else {
-            self.add_instr(OpCode::ConstLong);
-            self.write_long(constant_index);
-        }
+        self.add_instr_with_arg(OpCode::Const, OpCode::ConstLong, constant_index);
     }
 
-    pub fn write_long(&mut self, bytes: usize) {
-        self.write((bytes & 0xff) as u8);
-        self.write(((bytes >> 8) & 0xff) as u8);
-        self.write(((bytes >> 16) & 0xff) as u8);
+    pub fn add_instr_with_arg(&mut self, op: OpCode, op_long: OpCode, arg: usize) {
+        if arg < 256 {
+            self.add_instr(op);
+            self.write(arg as u8);
+        } else {
+            self.add_instr(op_long);
+            self.write((arg & 0xff) as u8);
+            self.write(((arg >> 8) & 0xff) as u8);
+            self.write(((arg >> 16) & 0xff) as u8);
+        }
     }
 
     pub fn write(&mut self, byte: u8) {

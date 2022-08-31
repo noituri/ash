@@ -23,6 +23,7 @@ pub(crate) struct Resolver<'a> {
     scopes: Vec<Scope>,
     current_function: Option<FunctionType>,
     errors: Vec<Simple<String>>,
+    deps: Option<(Id, String, Vec<Id>)>,
 }
 
 impl<'a> Resolver<'a> {
@@ -43,6 +44,7 @@ impl<'a> Resolver<'a> {
             scopes: vec![Scope::from_iter(global_scope)],
             current_function: None,
             errors: Vec::new(),
+            deps: None,
         }
     }
 
@@ -84,6 +86,15 @@ impl<'a> Resolver<'a> {
                 self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
+            Stmt::VariableDecl {
+                id,
+                name,
+                ty,
+                value,
+            } => {
+                self.declare(name.clone(), *id, ty.clone());
+                self.define(name.clone());
+            }
             _ => self.new_error(
                 "This statement can not be used in the root scope",
                 span.clone(),
@@ -112,9 +123,16 @@ impl<'a> Resolver<'a> {
                 value,
                 ty,
             } => {
+                let prev_deps = self.deps.clone();
+                self.deps = Some((*id, name.clone(), Vec::new()));
+
                 self.declare(name.clone(), *id, ty.clone());
                 self.resolve_expr(value, span);
-                self.define(name.clone())
+                self.define(name.clone());
+
+                let (_, _, deps) = self.deps.clone().unwrap();
+                self.context.resolve_new_var(*id, name.clone(), value.clone(), deps);
+                self.deps = prev_deps;
             }
             Stmt::VariableAssign { id, name, value } => {
                 self.resolve_expr(value, span);
@@ -223,9 +241,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
-        for (depth, scope) in self.scopes.iter().enumerate() {
+        for (depth, scope) in self.scopes.iter_mut().enumerate() {
             if let Some(data) = scope.get(name) {
-                self.context.resolve(id, depth, data.ty.clone(), data.id);
+                let points_to = data.id;
+                self.context.resolve(id, depth, data.ty.clone(), points_to);
+                self.detect_deps(points_to, span.clone());
                 return;
             }
         }
@@ -255,6 +275,23 @@ impl<'a> Resolver<'a> {
     fn define(&mut self, name: String) {
         if let Some(scope) = self.scopes.last_mut() {
             scope.get_mut(&name).unwrap().is_defined = true;
+        }
+    }
+
+    fn detect_deps(&mut self, checked_id: Id, span: Span) {
+        if let Some(deps) = &mut self.deps {
+            let path = self.context.check_circular_dep(deps.0, checked_id);
+            if !path.is_empty() {
+                let path = path
+                    .into_iter()
+                    .map(|v| v.name)
+                    .collect::<Vec<_>>()
+                    .join(" -> ");
+                let var_name = deps.1.clone();
+                self.new_error(format!("Found initialization loop: {var_name} -> {path} -> {var_name}"), span);
+                return;
+            }
+            deps.2.push(checked_id);
         }
     }
 

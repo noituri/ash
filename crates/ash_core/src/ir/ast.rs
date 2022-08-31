@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Stmt {
     Annotation(Spanned<Annotation>, Box<Spanned<Stmt>>),
     ProtoFunction(ProtoFunction),
@@ -32,7 +32,7 @@ pub(crate) enum Stmt {
     Expression(Expr, Ty),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Expr {
     Variable(Id, String, Ty),
     Literal(Value),

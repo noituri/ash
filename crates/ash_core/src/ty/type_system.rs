@@ -50,6 +50,20 @@ impl<'a> TypeSystem<'a> {
         Ok(ast)
     }
 
+    fn resolve_root(
+        &mut self,
+        statements: Vec<Spanned<parser::Stmt>>
+    ) {
+        // let mut post_check =
+        // for (span, stmt) in statements {
+        //     match stmt {
+        //         parser::Stmt::VariableDecl { id, name, ty, value } => {
+                    
+        //         }
+        //     } 
+        // }
+    }
+
     fn type_stmt(
         &mut self,
         (stmt, span): Spanned<parser::Stmt>,
@@ -125,7 +139,7 @@ impl<'a> TypeSystem<'a> {
                 }
             }
             parser::Stmt::VariableAssign { id, name, value } => {
-                let ty = self.context.var_type_at(id);
+                let ty = self.context.var_type_at(id).unwrap();
                 let mut value = self.type_expr(value, span.clone(), false);
                 let value_ty = value.ty(self);
                 self.check_type(ty, value_ty, span.clone());
@@ -172,11 +186,20 @@ impl<'a> TypeSystem<'a> {
 
         (stmt, span)
     }
-
+    
     fn type_expr(&mut self, expr: parser::Expr, span: Span, expr_statement: bool) -> ty::Expr {
         match expr {
             parser::Expr::Variable(id, name) => {
-                let ty = self.context.var_type_at(id);
+                let ty = match self.context.var_type_at(id) {
+                    Some(ty) => ty,
+                    None => {
+                        let node = self.context.get_pointer_var_node(id).clone();
+                        let mut value = self.type_expr(node.value, Span::default(), expr_statement);
+                        let ty = value.ty(self);        
+                        self.context.new_var(node.id, node.name, ty.clone());
+                        ty
+                    }
+                };
                 if !self.parsing_call && matches!(ty, Ty::Fun(_, _)) {
                     // Promotes var to call
                     self.type_call(parser::Expr::Variable(id, name), Vec::new(), span)

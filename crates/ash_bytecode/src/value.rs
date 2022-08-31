@@ -3,8 +3,9 @@ use std::{
     ops::{Add, Div, Mul, Neg, Not, Rem, Sub},
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Value {
+    I32(i32),
     F64(f64),
     Bool(bool),
     String(String), // TODO: Use GCObject
@@ -13,6 +14,7 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            Self::I32(v) => v.to_string(),
             Self::F64(v) => format!("{:.2}", v),
             Self::Bool(v) => format!("{v}"),
             Self::String(v) => v.clone(),
@@ -38,6 +40,7 @@ impl Neg for Value {
 
     fn neg(self) -> Self::Output {
         match self {
+            Self::I32(v) => Self::I32(-v),
             Self::F64(v) => Self::F64(-v),
             _ => unreachable!(),
         }
@@ -49,6 +52,7 @@ impl Add for Value {
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
+            (Self::I32(v1), Self::I32(v2)) => Self::I32(v1 + v2),
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 + v2),
             (Self::String(v1), Self::String(v2)) => Self::String(v1 + &v2),
             _ => unreachable!(),
@@ -61,6 +65,7 @@ impl Sub for Value {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
+            (Self::I32(v1), Self::I32(v2)) => Self::I32(v1 - v2),
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 - v2),
             _ => unreachable!(),
         }
@@ -72,6 +77,7 @@ impl Mul for Value {
 
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
+            (Self::I32(v1), Self::I32(v2)) => Self::I32(v1 * v2),
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 * v2),
             _ => unreachable!(),
         }
@@ -83,6 +89,7 @@ impl Div for Value {
 
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
+            (Self::I32(v1), Self::I32(v2)) => Self::I32(v1 / v2),
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 / v2),
             _ => unreachable!(),
         }
@@ -94,6 +101,7 @@ impl Rem for Value {
 
     fn rem(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
+            (Self::I32(v1), Self::I32(v2)) => Self::I32(v1 % v2),
             (Self::F64(v1), Self::F64(v2)) => Self::F64(v1 % v2),
             _ => unreachable!(),
         }
@@ -103,6 +111,7 @@ impl Rem for Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::I32(l0), Self::I32(r0)) => l0 == r0,
             (Self::F64(l0), Self::F64(r0)) => l0 == r0,
             (Self::Bool(l0), Self::Bool(r0)) => l0 == r0,
             _ => unreachable!(),
@@ -113,6 +122,7 @@ impl PartialEq for Value {
 impl PartialOrd for Value {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (self, other) {
+            (Self::I32(v1), Self::I32(v2)) => v1.partial_cmp(v2),
             (Self::F64(v1), Self::F64(v2)) => v1.partial_cmp(v2),
             _ => unreachable!(),
         }

@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet, VecDeque};
+
 use ash_bytecode::prelude::Chunk;
 
 use crate::{
@@ -65,11 +67,75 @@ impl<'a> IR<'a> {
         Self { context }
     }
 
-    // TODO: Return Bytecode IR
     pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
+        self.mangle_root(&ast);
         let ast = self.desugar_statements(ast);
+        let ast = self.sort_root(ast);
         let compiler = Compiler::new(self.context);
         compiler.run(ast)
+    }
+
+    fn mangle_root(&mut self, ast: &[Spanned<ty::Stmt>]) {
+        for stmt in ast {
+            match &stmt.0 {
+                ty::Stmt::VariableDecl { id, name, .. } => {
+                    let mut name = name.clone();
+                    self.mangle_var_decl_name(*id, &mut name)
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // TODO: Figure out better way of doing this
+    // It makes sure variables are initialized in such order that
+    // the variables, the initializer depends on, are available at the time.
+    // The current implementation of VM needs to know values of every variable that
+    // is needed to initialize declared variable
+    fn sort_root(&self, ast: Vec<Spanned<ir::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
+        let mut sorted_ast = Vec::new();
+        let mut postponed = Vec::new();
+        let mut declared = HashSet::new();
+        let mut unsorted_vars = VecDeque::new();
+        for stmt in ast {
+            match stmt.0 {
+                ir::Stmt::VariableDecl { id, .. } => {
+                    let deps = self.context.get_var_deps(id);
+                    if deps.is_empty() {
+                        sorted_ast.push(stmt);
+                        declared.insert(id);
+                    } else {
+                        for dep in deps {
+                            if !declared.contains(dep) {
+                                unsorted_vars.push_back((id, stmt, deps));
+                                break;
+                            }
+                        }
+                    }
+                }
+                _ => postponed.push(stmt),
+            }
+        }
+
+        // TODO: Make sure it doesn't loop forever
+        while let Some((id, v, deps)) = unsorted_vars.pop_front() {
+            let mut resolved = true;
+            for dep in deps {
+                if !declared.contains(dep) {
+                    resolved = false;
+                    unsorted_vars.push_back((id, v.clone(), deps));
+                    break;
+                }
+            }
+
+            if resolved {
+                declared.insert(id);
+                sorted_ast.push(v);
+            }
+        }
+
+        sorted_ast.append(&mut postponed);
+        sorted_ast
     }
 
     fn desugar_statements(&mut self, statements: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
@@ -122,7 +188,7 @@ impl<'a> IR<'a> {
                 value,
             } => {
                 self.mangle_var_expr_name(id, &mut name.0);
-                let ty = self.context.var_type_at(id);
+                let ty = self.context.var_type_at(id).unwrap();
                 let expr = self.desugar_expr(value);
                 let value = expr
                     .returns
@@ -167,7 +233,6 @@ impl<'a> IR<'a> {
             ty::Expr::Variable(id, mut name, ty) => {
                 self.mangle_var_expr_name(id, &mut name);
                 let var = ir::Expr::Variable(id, name, ty);
-
                 DesugaredAst::returns(var)
             }
             ty::Expr::Block(statements, ty) => self.desugar_block(statements, ty),

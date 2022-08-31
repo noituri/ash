@@ -49,6 +49,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_expr(&mut self, expr: Expr) {
         match expr {
+            Expr::Variable(_, name, _) => self.compile_var_load(name),
             Expr::Literal(value) => self.compile_literal(value),
             Expr::Unary { op, right, .. } => {
                 self.compile_expr(*right);
@@ -92,12 +93,19 @@ impl<'a> Compiler<'a> {
             }
         } else {
             let value = match value {
+                ty::Value::I32(v) => Value::I32(v),
                 ty::Value::F64(v) => Value::F64(v),
                 _ => unimplemented!(),
             };
 
             self.write_const(value);
         }
+    }
+
+    fn compile_var_load(&mut self, name: String) {
+        let name_index = self.compile_identifier(name);
+        self.chunk
+            .add_instr_with_arg(OpCode::LoadGlobal, OpCode::LoadGlobalLong, name_index);
     }
 
     fn compile_identifier(&mut self, name: String) -> usize {
@@ -116,13 +124,8 @@ impl<'a> Compiler<'a> {
     }
 
     fn def_global(&mut self, global_index: usize) {
-        if global_index < 256 {
-            self.add_instr(OpCode::DefGlobal);
-            self.chunk.write(global_index as u8);
-        } else {
-            self.add_instr(OpCode::DefGlobalLong);
-            self.chunk.write_long(global_index);
-        }
+        self.chunk
+            .add_instr_with_arg(OpCode::DefGlobal, OpCode::DefGlobalLong, global_index);
     }
 
     fn add_instr(&mut self, op: OpCode) {
