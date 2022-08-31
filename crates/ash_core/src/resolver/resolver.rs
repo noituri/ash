@@ -90,7 +90,7 @@ impl<'a> Resolver<'a> {
                 id,
                 name,
                 ty,
-                value,
+                value: _,
             } => {
                 self.declare(name.clone(), *id, ty.clone());
                 self.define(name.clone());
@@ -131,7 +131,8 @@ impl<'a> Resolver<'a> {
                 self.define(name.clone());
 
                 let (_, _, deps) = self.deps.clone().unwrap();
-                self.context.resolve_new_var(*id, name.clone(), value.clone(), deps);
+                self.context
+                    .resolve_new_var(*id, name.clone(), value.clone(), deps);
                 self.deps = prev_deps;
             }
             Stmt::VariableAssign { id, name, value } => {
@@ -288,7 +289,10 @@ impl<'a> Resolver<'a> {
                     .collect::<Vec<_>>()
                     .join(" -> ");
                 let var_name = deps.1.clone();
-                self.new_error(format!("Found initialization loop: {var_name} -> {path} -> {var_name}"), span);
+                self.new_error(
+                    format!("Found initialization loop: {var_name} -> {path} -> {var_name}"),
+                    span,
+                );
                 return;
             }
             deps.2.push(checked_id);

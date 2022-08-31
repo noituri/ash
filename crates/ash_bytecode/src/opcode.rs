@@ -54,7 +54,7 @@ impl fmt::Display for OpCode {
             Self::DefGlobal => "OP_DEF_GLOBAL",
             Self::DefGlobalLong => "OP_DEF_GLOBAL_LONG",
             Self::LoadGlobal => "OP_LOAD_GLOBAL",
-            Self::LoadGlobalLong => "OP_LOAD_GLOBAL_LONG"
+            Self::LoadGlobalLong => "OP_LOAD_GLOBAL_LONG",
         };
 
         f.write_str(s)

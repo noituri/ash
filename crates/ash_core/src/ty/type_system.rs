@@ -50,17 +50,14 @@ impl<'a> TypeSystem<'a> {
         Ok(ast)
     }
 
-    fn resolve_root(
-        &mut self,
-        statements: Vec<Spanned<parser::Stmt>>
-    ) {
+    fn resolve_root(&mut self, _statements: Vec<Spanned<parser::Stmt>>) {
         // let mut post_check =
         // for (span, stmt) in statements {
         //     match stmt {
         //         parser::Stmt::VariableDecl { id, name, ty, value } => {
-                    
+
         //         }
-        //     } 
+        //     }
         // }
     }
 
@@ -186,7 +183,7 @@ impl<'a> TypeSystem<'a> {
 
         (stmt, span)
     }
-    
+
     fn type_expr(&mut self, expr: parser::Expr, span: Span, expr_statement: bool) -> ty::Expr {
         match expr {
             parser::Expr::Variable(id, name) => {
@@ -195,7 +192,7 @@ impl<'a> TypeSystem<'a> {
                     None => {
                         let node = self.context.get_pointer_var_node(id).clone();
                         let mut value = self.type_expr(node.value, Span::default(), expr_statement);
-                        let ty = value.ty(self);        
+                        let ty = value.ty(self);
                         self.context.new_var(node.id, node.name, ty.clone());
                         ty
                     }

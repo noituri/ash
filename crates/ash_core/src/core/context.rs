@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ty::Ty, parser::Expr};
+use crate::{parser::Expr, ty::Ty};
 
 use super::{Env, Id};
 
@@ -8,7 +8,7 @@ pub struct Context {
     env: Env,
     location: String,
     locals: HashMap<Id, Local>,
-    var_nodes: HashMap<Id, VarNode>
+    var_nodes: HashMap<Id, VarNode>,
 }
 
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub(crate) struct VarNode {
     pub id: Id,
     pub name: String,
     pub value: Expr,
-    pub deps: Vec<Id>
+    pub deps: Vec<Id>,
 }
 
 #[derive(Debug)]
@@ -114,21 +114,29 @@ impl Context {
                 if *dep == id {
                     return vec![var_decl.clone()];
                 }
-                
+
                 let mut deps_path = self.check_circular_dep(id, *dep);
-                if !deps_path.is_empty() {       
+                if !deps_path.is_empty() {
                     let mut new_path = vec![var_decl.clone()];
                     new_path.append(&mut deps_path);
                     return new_path;
                 }
             }
         }
-        
+
         Vec::new()
     }
 
     pub(crate) fn resolve_new_var(&mut self, id: Id, name: String, value: Expr, deps: Vec<Id>) {
-        self.var_nodes.insert(id, VarNode { id, name: name.clone(), value, deps});
+        self.var_nodes.insert(
+            id,
+            VarNode {
+                id,
+                name: name.clone(),
+                value,
+                deps,
+            },
+        );
         self.locals.insert(
             id,
             Local {
