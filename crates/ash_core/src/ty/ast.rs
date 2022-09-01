@@ -12,7 +12,7 @@ use super::{
     TypeSystem, Value,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Stmt {
     Annotation(Spanned<Annotation>, Box<Spanned<Stmt>>),
     ProtoFunction(ProtoFunction),
@@ -55,7 +55,7 @@ impl Stmt {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Expr {
     Variable(Id, String, Ty),
     Literal(Value),

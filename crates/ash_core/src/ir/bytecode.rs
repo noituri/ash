@@ -43,6 +43,11 @@ impl<'a> Compiler<'a> {
                 self.compile_expr(value);
                 self.def_global(name_index);
             }
+            Stmt::VariableAssign { name, value, .. } => {
+                let name_index = self.compile_identifier(name.0);
+                self.compile_expr(value);
+                self.chunk.add_instr_with_arg(OpCode::StoreGlobal, OpCode::StoreGlobalLong, name_index);
+            }
             _ => unimplemented!(),
         }
     }

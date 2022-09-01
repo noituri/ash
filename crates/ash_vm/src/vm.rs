@@ -94,6 +94,14 @@ impl<'a> VM<'a> {
                     let name = self.read_const_long().string_value();
                     self.load_global(name);
                 }
+                OpCode::StoreGlobal => {
+                    let name = self.read_const().string_value();
+                    self.store_global(name);
+                }
+                OpCode::StoreGlobalLong => {
+                    let name = self.read_const_long().string_value();
+                    self.store_global(name);
+                }
             }
         }
     }
@@ -106,6 +114,11 @@ impl<'a> VM<'a> {
     fn load_global(&mut self, name: String) {
         let value = self.globals.get(&name).unwrap();
         self.push(value.clone());
+    }
+
+    fn store_global(&mut self, name: String) {
+        let v = self.pop();
+        self.globals.insert(name, v);
     }
 
     fn bin_op<F>(&mut self, op_f: F)

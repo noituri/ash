@@ -27,6 +27,8 @@ pub enum OpCode {
     DefGlobalLong = 20,
     LoadGlobal = 21,
     LoadGlobalLong = 22,
+    StoreGlobal = 23,
+    StoreGlobalLong = 24,
 }
 
 impl fmt::Display for OpCode {
@@ -55,6 +57,8 @@ impl fmt::Display for OpCode {
             Self::DefGlobalLong => "OP_DEF_GLOBAL_LONG",
             Self::LoadGlobal => "OP_LOAD_GLOBAL",
             Self::LoadGlobalLong => "OP_LOAD_GLOBAL_LONG",
+            Self::StoreGlobal => "OP_STORE_GLOBAL",
+            Self::StoreGlobalLong => "OP_STORE_GLOBAL_LONG",
         };
 
         f.write_str(s)
@@ -87,6 +91,8 @@ impl From<u8> for OpCode {
             20 => Self::DefGlobalLong,
             21 => Self::LoadGlobal,
             22 => Self::LoadGlobalLong,
+            23 => Self::StoreGlobal,
+            24 => Self::StoreGlobalLong,
             _ => unreachable!("Operation does not exist: {b}"),
         }
     }
@@ -115,7 +121,7 @@ impl OpCode {
                 println!("{}", self.to_string());
                 offset + 1
             }
-            Self::Const | Self::DefGlobal | Self::LoadGlobal => {
+            Self::Const | Self::DefGlobal | Self::LoadGlobal | Self::StoreGlobal => {
                 let constant = chunk.code[offset + 1];
                 let value = &chunk.constants[constant as usize];
                 println!(
@@ -126,7 +132,7 @@ impl OpCode {
                 );
                 offset + 2
             }
-            Self::ConstLong | Self::DefGlobalLong | Self::LoadGlobalLong => {
+            Self::ConstLong | Self::DefGlobalLong | Self::LoadGlobalLong | Self::StoreGlobalLong => {
                 let constant = {
                     let c1 = chunk.code[offset + 1] as usize;
                     let c2 = chunk.code[offset + 2] as usize;

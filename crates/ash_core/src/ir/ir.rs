@@ -68,23 +68,11 @@ impl<'a> IR<'a> {
     }
 
     pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
-        self.mangle_root(&ast);
-        let ast = self.desugar_statements(ast);
         let ast = self.sort_root(ast);
+        let ast = self.desugar_statements(ast);
+        dbg!(&ast);
         let compiler = Compiler::new(self.context);
         compiler.run(ast)
-    }
-
-    fn mangle_root(&mut self, ast: &[Spanned<ty::Stmt>]) {
-        for stmt in ast {
-            match &stmt.0 {
-                ty::Stmt::VariableDecl { id, name, .. } => {
-                    let mut name = name.clone();
-                    self.mangle_var_decl_name(*id, &mut name)
-                }
-                _ => {}
-            }
-        }
     }
 
     // TODO: Figure out better way of doing this
@@ -92,14 +80,14 @@ impl<'a> IR<'a> {
     // the variables, the initializer depends on, are available at the time.
     // The current implementation of VM needs to know values of every variable that
     // is needed to initialize declared variable
-    fn sort_root(&self, ast: Vec<Spanned<ir::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
+    fn sort_root(&self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ty::Stmt>> {
         let mut sorted_ast = Vec::new();
         let mut postponed = Vec::new();
         let mut declared = HashSet::new();
         let mut unsorted_vars = VecDeque::new();
         for stmt in ast {
             match stmt.0 {
-                ir::Stmt::VariableDecl { id, .. } => {
+                ty::Stmt::VariableDecl { id, .. } => {
                     let deps = self.context.get_var_deps(id);
                     if deps.is_empty() {
                         sorted_ast.push(stmt);
