@@ -132,7 +132,10 @@ impl OpCode {
                 );
                 offset + 2
             }
-            Self::ConstLong | Self::DefGlobalLong | Self::LoadGlobalLong | Self::StoreGlobalLong => {
+            Self::ConstLong
+            | Self::DefGlobalLong
+            | Self::LoadGlobalLong
+            | Self::StoreGlobalLong => {
                 let constant = {
                     let c1 = chunk.code[offset + 1] as usize;
                     let c2 = chunk.code[offset + 2] as usize;
