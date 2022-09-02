@@ -3,7 +3,7 @@ pub use expr::*;
 pub use stmt::*;
 
 mod annotation;
-mod common;
+pub(crate) mod common;
 pub mod conditional;
 pub(crate) mod expr;
 mod function;

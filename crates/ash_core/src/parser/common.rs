@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, ty::Ty};
+use crate::{lexer::token::Token, ty::Ty, core::Spanned, prelude::Span};
 use chumsky::prelude::*;
 
 use super::{expr::Expr, stmt::StmtRecursive};
@@ -49,4 +49,15 @@ pub(super) fn block_parser<'a>(
 
 pub(super) fn type_parser() -> impl Parser<Token, Ty, Error = Simple<Token>> {
     ident_parser().map::<Ty, _>(From::from)
+}
+
+pub(crate) fn calc_block_span<T>(statements: &[Spanned<T>], start_span: Span) -> Span {
+    let first = match statements.first() {
+        Some((_, span)) => span,
+        None => return start_span,
+    };
+
+    let last = &statements.last().unwrap().1;
+
+    first.start()..last.end()
 }

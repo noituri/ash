@@ -4,7 +4,7 @@ use ash_bytecode::prelude::Chunk;
 
 use crate::{
     core::{next_id, Context, Id, Spanned},
-    parser::{conditional::IfInner, If},
+    parser::{conditional::IfInner, If, common::calc_block_span},
     prelude::Span,
     ty::{self, function::Function, Ty, Value},
 };
@@ -299,7 +299,8 @@ impl<'a> IR<'a> {
     ) -> DesugaredAst<ir::Expr> {
         let mut statements = self.desugar_statements(statements);
         if ty == Ty::Void {
-            DesugaredAst::rest(statements)
+            let span = calc_block_span(&statements, Span::default());
+            DesugaredAst::rest(vec![(ir::Stmt::Block(statements), span)])
         } else {
             let (last, _) = statements.remove(statements.len() - 1);
             let expr = if let ir::Stmt::Expression(expr, _) = last {
@@ -387,7 +388,8 @@ impl<'a> IR<'a> {
                 .map(|expr| ir.new_var_assign(name.clone(), expr, ty.clone(), id));
             let mut body = body.rest;
             body.push((assign.unwrap(), Span::default()));
-            body
+
+           body 
         }
 
         let mut desugar_inner_if =
@@ -450,7 +452,7 @@ impl<'a> IR<'a> {
         let fun_ty = ir_fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
-            ty::Stmt::Expression(ty::Expr::Block(statements, _), _) => {
+            ty::Stmt::Expression(ty::Expr::Block(statements,  _), _) => {
                 let statements = self.desugar_statements(statements);
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }

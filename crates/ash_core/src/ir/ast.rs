@@ -29,6 +29,7 @@ pub(crate) enum Stmt {
     While(Spanned<Expr>, Vec<Spanned<Stmt>>),
     If(If<Expr, Stmt>),
     Return(Option<Expr>, Ty),
+    Block(Vec<Spanned<Stmt>>),
     Expression(Expr, Ty),
 }
 

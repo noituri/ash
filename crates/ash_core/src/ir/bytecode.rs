@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ash_bytecode::prelude::*;
 
-use crate::core::{Context, Spanned};
+use crate::core::{Context, Spanned, Local};
 use crate::parser::operator::{BinaryOp, UnaryOp};
 use crate::ty;
 
@@ -11,6 +11,8 @@ use super::{Expr, Stmt};
 pub(super) struct Compiler<'a> {
     context: &'a Context,
     chunk: Chunk,
+    locals: Vec<Local>,
+    scope_depth: usize,
     str_constants: HashMap<String, usize>,
 }
 
@@ -19,20 +21,22 @@ impl<'a> Compiler<'a> {
         Self {
             context,
             chunk: Chunk::default(),
+            locals: Vec::new(),
+            scope_depth: 0,
             str_constants: HashMap::new(),
         }
     }
 
     pub fn run(mut self, ast: Vec<Spanned<Stmt>>) -> Chunk {
         for (stmt, _) in ast {
-            self.compile_stmt(stmt, true);
+            self.compile_stmt(stmt);
         }
 
         self.add_instr(OpCode::Ret);
         self.chunk
     }
 
-    fn compile_stmt(&mut self, stmt: Stmt, _is_global: bool) {
+    fn compile_stmt(&mut self, stmt: Stmt) {
         match stmt {
             Stmt::Expression(expr, _) => {
                 self.compile_expr(expr);
@@ -51,6 +55,13 @@ impl<'a> Compiler<'a> {
                     OpCode::StoreGlobalLong,
                     name_index,
                 );
+            }
+            Stmt::Block(statements) => {
+                self.begin_scope();
+                for (stmt, _) in statements {
+                    self.compile_stmt(stmt);
+                }
+                self.end_scope();
             }
             _ => unimplemented!(),
         }
@@ -143,5 +154,13 @@ impl<'a> Compiler<'a> {
 
     fn write_const(&mut self, value: Value) {
         self.current_chunk().write_const(value);
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
     }
 }
