@@ -28,20 +28,9 @@ pub(crate) struct Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(context: &'a mut Context) -> Self {
-        // let global_scope = context
-        //     .get_env()
-        //     .typed_names()
-        //     .into_iter()
-        //     .map(|(n, t)| (n, VarData {
-        //         id: None, // FIXME: builtin IDs
-        //         is_defined: true,
-        //         ty: Some(t),
-        //     }));
-        let global_scope = Vec::new();
-
         Self {
             context,
-            scopes: vec![Scope::from_iter(global_scope)],
+            scopes: vec![Scope::new()],
             current_function: None,
             errors: Vec::new(),
             deps: None,
@@ -196,13 +185,13 @@ impl<'a> Resolver<'a> {
     fn resolve_expr(&mut self, expr: &'a Expr, span: &'a Span) {
         match expr {
             Expr::Variable(id, name) => {
-                let v = self.scopes.last().unwrap().get(name).map(|v| v.is_defined);
-                if v == Some(false) {
-                    self.new_error(
-                        "Use of variable in its own initializer is forbidden",
-                        span.clone(),
-                    );
-                }
+                // let v = self.scopes.last().unwrap().get(name).map(|v| v.is_defined);
+                // if v == Some(false) {
+                //     self.new_error(
+                //         "Use of variable in its own initializer is forbidden",
+                //         span.clone(),
+                //     );
+                // }
 
                 self.resolve_local(*id, name, span.clone())
             }

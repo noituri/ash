@@ -111,7 +111,7 @@ impl Context {
     pub(crate) fn check_circular_dep(&self, id: Id, points_to: Id) -> Vec<VarNode> {
         if let Some(var_decl) = self.var_nodes.get(&points_to) {
             for dep in var_decl.deps.iter() {
-                if *dep == id {
+                if *dep == id || *dep == var_decl.id {
                     return vec![var_decl.clone()];
                 }
 
