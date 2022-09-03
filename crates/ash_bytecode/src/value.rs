@@ -160,4 +160,11 @@ impl Value {
             _ => unreachable!(),
         }
     }
+
+    pub fn bool_value(self) -> bool {
+        match self {
+            Self::Bool(v) => v,
+            _ => unreachable!(),
+        }
+    }
 }

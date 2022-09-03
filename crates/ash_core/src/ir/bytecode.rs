@@ -62,6 +62,12 @@ impl<'a> Compiler<'a> {
                 self.chunk.add_instr_with_arg(store, store_long, arg);
             }
             Stmt::Block(statements) => self.compile_block(statements),
+            Stmt::If(inner) => {
+                self.compile_expr(inner.then.condition.0);
+                let then_jmp = self.emit_jmp(OpCode::JmpIfFalse);
+                self.compile_block(inner.then.body);
+                self.patch_jmp(then_jmp); 
+            },
             _ => unimplemented!(),
         }
     }
@@ -196,6 +202,24 @@ impl<'a> Compiler<'a> {
         }
 
         None
+    }
+
+    fn emit_jmp(&mut self, op: OpCode) -> usize {
+        self.add_instr(op);
+        self.chunk.write(0xff);
+        self.chunk.write(0xff);
+
+        self.chunk.len() - 2
+    }
+
+    fn patch_jmp(&mut self, offset: usize) {
+        let jmp = self.chunk.len() - offset - 2;
+        if jmp > u16::MAX {
+            todo!("Add op jmp long");
+        }
+
+        self.chunk.code[offset] = (jmp >> 8) & 0xff;
+        self.chunk.code[offset + 1] = jmp & 0xff;
     }
 
     fn begin_scope(&mut self) {

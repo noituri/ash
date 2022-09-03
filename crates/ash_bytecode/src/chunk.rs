@@ -3,7 +3,7 @@ use crate::{opcode::OpCode, prelude::Value};
 #[derive(Default)]
 pub struct Chunk {
     pub(crate) constants: Vec<Value>,
-    pub(crate) code: Vec<u8>,
+    pub code: Vec<u8>,
 }
 
 impl Chunk {
@@ -35,6 +35,11 @@ impl Chunk {
 
     pub fn write(&mut self, byte: u8) {
         self.code.push(byte);
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.code.len()
     }
 
     #[inline]

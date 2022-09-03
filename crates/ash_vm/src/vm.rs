@@ -118,6 +118,13 @@ impl<'a> VM<'a> {
                     let slot = self.read_long();
                     self.store_local(slot);
                 }
+                OpCode::JmpIfFalse => {
+                    let offset = self.read_short();
+                    let cond = self.peek();
+                    if !cond.bool_value() {
+                        self.ip += offset;
+                    }
+                }
             }
         }
     }
@@ -160,6 +167,13 @@ impl<'a> VM<'a> {
         let b = self.chunk.get_byte(self.ip);
         self.ip += 1;
         b
+    }
+
+    fn read_short(&mut self) -> usize {
+        let c1 = self.read_byte() as usize;
+        let c2 = self.read_byte() as usize;
+
+        c1 | (c2 << 8) 
     }
 
     fn read_long(&mut self) -> usize {
