@@ -4,7 +4,7 @@ use ash_bytecode::prelude::Chunk;
 
 use crate::{
     core::{next_id, Context, Id, Spanned},
-    parser::{conditional::IfInner, If, common::calc_block_span},
+    parser::{common::calc_block_span, conditional::IfInner, If},
     prelude::Span,
     ty::{self, function::Function, Ty, Value},
 };
@@ -389,7 +389,7 @@ impl<'a> IR<'a> {
             let mut body = body.rest;
             body.push((assign.unwrap(), Span::default()));
 
-           body 
+            body
         }
 
         let mut desugar_inner_if =
@@ -452,7 +452,7 @@ impl<'a> IR<'a> {
         let fun_ty = ir_fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
-            ty::Stmt::Expression(ty::Expr::Block(statements,  _), _) => {
+            ty::Stmt::Expression(ty::Expr::Block(statements, _), _) => {
                 let statements = self.desugar_statements(statements);
                 self.desugar_fun_return_expr(statements, fun_ty.clone())
             }

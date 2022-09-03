@@ -100,7 +100,23 @@ impl<'a> VM<'a> {
                 }
                 OpCode::StoreGlobalLong => {
                     let name = self.read_const_long().string_value();
-                    self.store_global(name);
+                    self.load_global(name);
+                }
+                OpCode::LoadLocal => {
+                    let slot = self.read_byte() as usize;
+                    self.load_local(slot);
+                }
+                OpCode::LoadLocalLong => {
+                    let slot = self.read_long();
+                    self.load_local(slot)
+                }
+                OpCode::StoreLocal => {
+                    let slot = self.read_byte() as usize;
+                    self.store_local(slot);
+                }
+                OpCode::StoreLocalLong => {
+                    let slot = self.read_long();
+                    self.store_local(slot);
                 }
             }
         }
@@ -121,6 +137,16 @@ impl<'a> VM<'a> {
         self.globals.insert(name, v);
     }
 
+    fn load_local(&mut self, slot: usize) {
+        let v = self.stack[slot].clone();
+        self.push(v);
+    }
+
+    fn store_local(&mut self, slot: usize) {
+        let v = self.pop();
+        self.stack[slot] = v;
+    }
+
     fn bin_op<F>(&mut self, op_f: F)
     where
         F: FnOnce(Value, Value) -> Value,
@@ -136,19 +162,20 @@ impl<'a> VM<'a> {
         b
     }
 
+    fn read_long(&mut self) -> usize {
+        let c1 = self.read_byte() as usize;
+        let c2 = self.read_byte() as usize;
+        let c3 = self.read_byte() as usize;
+
+        c1 | (c2 << 8) | (c3 << 16)
+    }
+
     fn read_const(&mut self) -> Value {
         self.chunk.get_const(self.read_byte() as usize).clone()
     }
 
     fn read_const_long(&mut self) -> Value {
-        let index = {
-            let c1 = self.read_byte() as usize;
-            let c2 = self.read_byte() as usize;
-            let c3 = self.read_byte() as usize;
-
-            c1 | (c2 << 8) | (c3 << 16)
-        };
-
+        let index = self.read_long();
         self.chunk.get_const(index).clone()
     }
 

@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, ty::Ty, core::Spanned, prelude::Span};
+use crate::{core::Spanned, lexer::token::Token, prelude::Span, ty::Ty};
 use chumsky::prelude::*;
 
 use super::{expr::Expr, stmt::StmtRecursive};

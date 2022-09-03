@@ -29,6 +29,10 @@ pub enum OpCode {
     LoadGlobalLong = 22,
     StoreGlobal = 23,
     StoreGlobalLong = 24,
+    LoadLocal = 25,
+    LoadLocalLong = 26,
+    StoreLocal = 27,
+    StoreLocalLong = 28,
 }
 
 impl fmt::Display for OpCode {
@@ -59,6 +63,10 @@ impl fmt::Display for OpCode {
             Self::LoadGlobalLong => "OP_LOAD_GLOBAL_LONG",
             Self::StoreGlobal => "OP_STORE_GLOBAL",
             Self::StoreGlobalLong => "OP_STORE_GLOBAL_LONG",
+            Self::LoadLocal => "OP_LOAD_LOCAL",
+            Self::LoadLocalLong => "OP_LOAD_LOCAL_LONG",
+            Self::StoreLocal => "OP_STORE_LOCAL",
+            Self::StoreLocalLong => "OP_STORE_LOCAL_LONG",
         };
 
         f.write_str(s)
@@ -93,6 +101,10 @@ impl From<u8> for OpCode {
             22 => Self::LoadGlobalLong,
             23 => Self::StoreGlobal,
             24 => Self::StoreGlobalLong,
+            25 => Self::LoadLocal,
+            26 => Self::LoadLocalLong,
+            27 => Self::StoreLocal,
+            28 => Self::StoreLocalLong,
             _ => unreachable!("Operation does not exist: {b}"),
         }
     }
@@ -100,6 +112,15 @@ impl From<u8> for OpCode {
 
 impl OpCode {
     pub fn print(&self, chunk: &Chunk, offset: usize) -> usize {
+        let read_long = || {
+            let c1 = chunk.code[offset + 1] as usize;
+            let c2 = chunk.code[offset + 2] as usize;
+            let c3 = chunk.code[offset + 3] as usize;
+
+            // Little-edian
+            c1 | (c2 << 8) | (c3 << 16)
+        };
+
         match self {
             Self::Ret
             | Self::Neg
@@ -122,37 +143,29 @@ impl OpCode {
                 offset + 1
             }
             Self::Const | Self::DefGlobal | Self::LoadGlobal | Self::StoreGlobal => {
-                let constant = chunk.code[offset + 1];
-                let value = &chunk.constants[constant as usize];
-                println!(
-                    "{} `{}` at {}",
-                    self.to_string(),
-                    value.to_string(),
-                    constant
-                );
+                let index = chunk.code[offset + 1];
+                let value = &chunk.constants[index as usize];
+                println!("{} `{}` at {}", self.to_string(), value.to_string(), index);
                 offset + 2
             }
             Self::ConstLong
             | Self::DefGlobalLong
             | Self::LoadGlobalLong
             | Self::StoreGlobalLong => {
-                let constant = {
-                    let c1 = chunk.code[offset + 1] as usize;
-                    let c2 = chunk.code[offset + 2] as usize;
-                    let c3 = chunk.code[offset + 3] as usize;
-
-                    // Little-edian
-                    c1 | (c2 << 8) | (c3 << 16)
-                };
-
-                let value = &chunk.constants[constant];
-                println!(
-                    "{} `{}` at {}",
-                    self.to_string(),
-                    value.to_string(),
-                    constant
-                );
+                let index = read_long();
+                let value = &chunk.constants[index];
+                println!("{} `{}` at {}", self.to_string(), value.to_string(), index,);
                 offset + 4
+            }
+            Self::LoadLocal | Self::StoreLocal => {
+                let slot = chunk.code[offset + 1];
+                println!("{} slot {}", self.to_string(), slot);
+                offset + 2
+            }
+            Self::LoadLocalLong | Self::StoreLocalLong => {
+                let slot = read_long();
+                println!("{} slot {}", self.to_string(), slot);
+                offset + 2
             }
         }
     }
