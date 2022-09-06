@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ash_bytecode::prelude::*;
 
 use crate::core::{Context, Spanned};
+use crate::parser::IfInner;
 use crate::parser::operator::{BinaryOp, UnaryOp};
 use crate::ty;
 
@@ -63,10 +64,18 @@ impl<'a> Compiler<'a> {
             }
             Stmt::Block(statements) => self.compile_block(statements),
             Stmt::If(inner) => {
-                self.compile_expr(inner.then.condition.0);
-                let then_jmp = self.emit_jmp(OpCode::JmpIfFalse);
-                self.compile_block(inner.then.body);
-                self.patch_jmp(then_jmp); 
+                self.compile_if(*inner.then);
+                let mut end_jmps = vec![self.emit_jmp(OpCode::Jmp)];
+                
+                for elif in inner.else_ifs {
+                    self.compile_if(elif); 
+                    end_jmps.push(self.emit_jmp(OpCode::Jmp));
+                }
+
+                self.compile_block(inner.otherwise);
+                for jmp in end_jmps {
+                    self.patch_jmp(jmp);
+                }
             },
             _ => unimplemented!(),
         }
@@ -86,27 +95,58 @@ impl<'a> Compiler<'a> {
             Expr::Binary {
                 left, op, right, ..
             } => {
-                self.compile_expr(*left);
-                self.compile_expr(*right);
+                if op == BinaryOp::LogicAnd {
+                    self.compile_expr(*left);
+                    let end_jmp = self.emit_jmp(OpCode::JmpIfFalse);
+                    self.add_instr(OpCode::Pop);
+                    
+                    self.compile_expr(*right);
 
-                let instr = match op {
-                    BinaryOp::Sum => OpCode::Sum,
-                    BinaryOp::Sub => OpCode::Sub,
-                    BinaryOp::Mul => OpCode::Mul,
-                    BinaryOp::Div => OpCode::Div,
-                    BinaryOp::Rem => OpCode::Rem,
-                    BinaryOp::Equal => OpCode::Eq,
-                    BinaryOp::NotEqual => OpCode::Neq,
-                    BinaryOp::Gt => OpCode::Gt,
-                    BinaryOp::Lt => OpCode::Lt,
-                    BinaryOp::Gte => OpCode::Gte,
-                    BinaryOp::Lte => OpCode::Lte,
-                };
+                    self.patch_jmp(end_jmp);
+                } else if op == BinaryOp::LogicOr {
+                    self.compile_expr(*left);
 
-                self.add_instr(instr);
+                    let else_jmp = self.emit_jmp(OpCode::JmpIfFalse);
+                    let end_jmp = self.emit_jmp(OpCode::Jmp);
+                    
+                    self.patch_jmp(else_jmp);
+                    self.add_instr(OpCode::Pop);
+
+                    self.compile_expr(*right);
+                    self.patch_jmp(end_jmp);
+                } else {
+                    self.compile_expr(*left);
+                    self.compile_expr(*right);
+    
+                    let instr = match op {
+                        BinaryOp::Sum => OpCode::Sum,
+                        BinaryOp::Sub => OpCode::Sub,
+                        BinaryOp::Mul => OpCode::Mul,
+                        BinaryOp::Div => OpCode::Div,
+                        BinaryOp::Rem => OpCode::Rem,
+                        BinaryOp::Equal => OpCode::Eq,
+                        BinaryOp::NotEqual => OpCode::Neq,
+                        BinaryOp::Gt => OpCode::Gt,
+                        BinaryOp::Lt => OpCode::Lt,
+                        BinaryOp::Gte => OpCode::Gte,
+                        BinaryOp::Lte => OpCode::Lte,
+                        BinaryOp::LogicAnd | BinaryOp::LogicOr => unreachable!()
+                    };
+    
+                    self.add_instr(instr);
+                }
             }
             _ => unimplemented!(),
         }
+    }
+
+    fn compile_if(&mut self, r#if: IfInner<Expr, Stmt>) {
+        self.compile_expr(r#if.condition.0);
+        let then_jmp = self.emit_jmp(OpCode::JmpIfFalse);
+        self.add_instr(OpCode::Pop);
+        self.compile_block(r#if.body);
+        self.patch_jmp(then_jmp);
+        self.add_instr(OpCode::Pop);
     }
 
     fn compile_block(&mut self, statements: Vec<Spanned<Stmt>>) {
@@ -214,12 +254,12 @@ impl<'a> Compiler<'a> {
 
     fn patch_jmp(&mut self, offset: usize) {
         let jmp = self.chunk.len() - offset - 2;
-        if jmp > u16::MAX {
+        if jmp > u16::MAX.into() {
             todo!("Add op jmp long");
         }
 
-        self.chunk.code[offset] = (jmp >> 8) & 0xff;
-        self.chunk.code[offset + 1] = jmp & 0xff;
+        self.chunk.code[offset] = ((jmp >> 8) & 0xff) as u8;
+        self.chunk.code[offset + 1] = (jmp & 0xff) as u8;
     }
 
     fn begin_scope(&mut self) {

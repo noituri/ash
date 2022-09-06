@@ -5,6 +5,8 @@ use crate::core::Spanned;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Token {
     At,
+    AndAnd,
+    BarBar,
     LParen,
     RParen,
     LBrace,
@@ -46,6 +48,8 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tok = match self {
             Token::At => "@",
+            Token::AndAnd => "&&",
+            Token::BarBar => "||",
             Token::LParen => "(",
             Token::RParen => ")",
             Token::LBrace => "{",

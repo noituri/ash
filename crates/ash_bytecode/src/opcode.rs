@@ -34,6 +34,7 @@ pub enum OpCode {
     StoreLocal = 27,
     StoreLocalLong = 28,
     JmpIfFalse = 29,
+    Jmp = 30,
 }
 
 impl fmt::Display for OpCode {
@@ -69,6 +70,7 @@ impl fmt::Display for OpCode {
             Self::StoreLocal => "OP_STORE_LOCAL",
             Self::StoreLocalLong => "OP_STORE_LOCAL_LONG",
             Self::JmpIfFalse => "OP_JMP_IF_FALSE",
+            Self::Jmp => "OP_JMP",
         };
 
         f.write_str(s)
@@ -108,6 +110,7 @@ impl From<u8> for OpCode {
             27 => Self::StoreLocal,
             28 => Self::StoreLocalLong,
             29 => Self::JmpIfFalse,
+            30 => Self::Jmp,
             _ => unreachable!("Operation does not exist: {b}"),
         }
     }
@@ -169,6 +172,16 @@ impl OpCode {
                 let slot = read_long();
                 println!("{} slot {}", self.to_string(), slot);
                 offset + 2
+            }
+            Self::JmpIfFalse | Self::Jmp => {
+                let jmp = { 
+                    let c1 = chunk.code[offset + 1] as usize;
+                    let c2 = chunk.code[offset + 2] as usize;
+
+                    c1 | (c2 << 8) 
+                };
+                println!("{} {} -> {}", self.to_string(), offset, offset + 3 + jmp);
+                offset + 3
             }
         }
     }

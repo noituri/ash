@@ -7,9 +7,11 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
     let colon = just("::")
         .to(Token::DoubleColon)
         .or(just(':').to(Token::Colon));
-
     let equal_equal = just("==").to(Token::DoubleEqual);
     let not_equal = just("!=").to(Token::NotEqual);
+    let and_and = just("&&").to(Token::AndAnd);
+    let bar_bar = just("||").to(Token::BarBar);
+
     let ops = one_of("+-*/%")
         .map_with_span(|c, _span| match c {
             '+' => Token::Plus,
@@ -39,6 +41,8 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         .or(colon)
         .or(equal_equal)
         .or(not_equal)
+        .or(and_and)
+        .or(bar_bar)
         .or(ops)
         .or(other)
 }

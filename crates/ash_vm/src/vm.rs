@@ -125,6 +125,10 @@ impl<'a> VM<'a> {
                         self.ip += offset;
                     }
                 }
+                OpCode::Jmp => {
+                    let offset = self.read_short();
+                    self.ip += offset;
+                }
             }
         }
     }

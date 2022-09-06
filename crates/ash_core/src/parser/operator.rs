@@ -23,6 +23,8 @@ pub(crate) enum BinaryOp {
     Lt,
     Gte,
     Lte,
+    LogicAnd,
+    LogicOr,
 }
 
 pub(super) fn operator_parser<'a, P>(
@@ -84,12 +86,10 @@ where
             right: Box::new(b),
         });
 
-    let op = just(Token::Gt)
-        .to(BinaryOp::Gt)
-        .or(just(Token::Lt).to(BinaryOp::Gt))
-        .or(just(Token::Gte).to(BinaryOp::Gte))
-        .or(just(Token::Lte).to(BinaryOp::Lte));
-    let ord = sum
+    let op = just(Token::DoubleEqual)
+        .to(BinaryOp::Equal)
+        .or(just(Token::NotEqual).to(BinaryOp::NotEqual));
+    let equality = sum
         .clone()
         .then(op.then(sum).repeated())
         .foldl(|a, (op, b)| Expr::Binary {
@@ -97,18 +97,41 @@ where
             op,
             right: Box::new(b),
         });
-
-    let op = just(Token::DoubleEqual)
-        .to(BinaryOp::Equal)
-        .or(just(Token::NotEqual).to(BinaryOp::NotEqual));
-    let equality = ord
+   
+    let op = just(Token::AndAnd)
+        .to(BinaryOp::LogicAnd);
+    let logic_and = equality
         .clone()
-        .then(op.then(ord).repeated())
+        .then(op.then(equality).repeated())
         .foldl(|a, (op, b)| Expr::Binary {
             left: Box::new(a),
             op,
             right: Box::new(b),
         });
 
-    equality
+    let op = just(Token::BarBar).to(BinaryOp::LogicOr);
+    let logic_or = logic_and
+        .clone()
+        .then(op.then(logic_and).repeated())
+        .foldl(|a, (op, b)| Expr::Binary {
+            left: Box::new(a),
+            op,
+            right: Box::new(b),
+        });
+
+    let op = just(Token::Gt)
+        .to(BinaryOp::Gt)
+        .or(just(Token::Lt).to(BinaryOp::Gt))
+        .or(just(Token::Gte).to(BinaryOp::Gte))
+        .or(just(Token::Lte).to(BinaryOp::Lte));
+    let ord = logic_or
+        .clone()
+        .then(op.then(logic_or).repeated())
+        .foldl(|a, (op, b)| Expr::Binary {
+            left: Box::new(a),
+            op,
+            right: Box::new(b),
+        });
+
+    ord
 }
