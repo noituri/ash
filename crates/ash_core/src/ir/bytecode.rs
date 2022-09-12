@@ -39,6 +39,7 @@ impl<'a> Compiler<'a> {
 
     fn compile_stmt(&mut self, stmt: Stmt) {
         match stmt {
+            Stmt::Annotation(_, stmt) => self.compile_stmt(stmt.0),
             Stmt::Expression(expr, _) => {
                 self.compile_expr(expr);
                 self.add_instr(OpCode::Pop);
@@ -77,6 +78,18 @@ impl<'a> Compiler<'a> {
                     self.patch_jmp(jmp);
                 }
             },
+            Stmt::While(cond, body) => {
+                let start = self.chunk.len();
+
+                self.compile_expr(cond.0);
+                let end_jmp = self.emit_jmp(OpCode::JmpIfFalse);
+                self.add_instr(OpCode::Pop);
+                self.compile_block(body);
+
+                self.emit_loop(start);
+                self.patch_jmp(end_jmp);
+                self.add_instr(OpCode::Pop);
+            }
             _ => unimplemented!(),
         }
     }
@@ -250,6 +263,17 @@ impl<'a> Compiler<'a> {
         self.chunk.write(0xff);
 
         self.chunk.len() - 2
+    }
+
+    fn emit_loop(&mut self, start: usize) {
+        self.add_instr(OpCode::Loop);
+        let offset = self.chunk.len() - start + 2;
+        if offset > u16::MAX.into() {
+            todo!("Add op loop long");
+        }
+        
+        self.chunk.write((offset >> 8 & 0xff) as u8);
+        self.chunk.write((offset & 0xff) as u8);
     }
 
     fn patch_jmp(&mut self, offset: usize) {

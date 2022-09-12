@@ -121,13 +121,17 @@ impl<'a> VM<'a> {
                 OpCode::JmpIfFalse => {
                     let offset = self.read_short();
                     let cond = self.peek();
-                    if !cond.bool_value() {
+                    if !cond.clone().bool_value() {
                         self.ip += offset;
                     }
                 }
                 OpCode::Jmp => {
                     let offset = self.read_short();
                     self.ip += offset;
+                }
+                OpCode::Loop => {
+                    let offset = self.read_short();
+                    self.ip -= offset;
                 }
             }
         }

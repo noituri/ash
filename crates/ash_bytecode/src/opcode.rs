@@ -3,6 +3,7 @@ use std::fmt;
 use crate::prelude::Chunk;
 
 #[repr(u8)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum OpCode {
     Ret = 0,
     Const = 1,
@@ -35,6 +36,7 @@ pub enum OpCode {
     StoreLocalLong = 28,
     JmpIfFalse = 29,
     Jmp = 30,
+    Loop = 31,
 }
 
 impl fmt::Display for OpCode {
@@ -71,6 +73,7 @@ impl fmt::Display for OpCode {
             Self::StoreLocalLong => "OP_STORE_LOCAL_LONG",
             Self::JmpIfFalse => "OP_JMP_IF_FALSE",
             Self::Jmp => "OP_JMP",
+            Self::Loop => "OP_LOOP",
         };
 
         f.write_str(s)
@@ -111,6 +114,7 @@ impl From<u8> for OpCode {
             28 => Self::StoreLocalLong,
             29 => Self::JmpIfFalse,
             30 => Self::Jmp,
+            31 => Self::Loop,
             _ => unreachable!("Operation does not exist: {b}"),
         }
     }
@@ -125,6 +129,13 @@ impl OpCode {
 
             // Little-edian
             c1 | (c2 << 8) | (c3 << 16)
+        };
+
+        let read_short = || {
+                    let c1 = chunk.code[offset + 1] as usize;
+                    let c2 = chunk.code[offset + 2] as usize;
+
+                    c1 | (c2 << 8) 
         };
 
         match self {
@@ -173,14 +184,14 @@ impl OpCode {
                 println!("{} slot {}", self.to_string(), slot);
                 offset + 2
             }
-            Self::JmpIfFalse | Self::Jmp => {
-                let jmp = { 
-                    let c1 = chunk.code[offset + 1] as usize;
-                    let c2 = chunk.code[offset + 2] as usize;
-
-                    c1 | (c2 << 8) 
+            Self::JmpIfFalse | Self::Jmp | Self::Loop => {
+                let jmp = read_short() as i64;
+                let sign = if *self == Self::Loop {
+                    -1
+                } else {
+                    1
                 };
-                println!("{} {} -> {}", self.to_string(), offset, offset + 3 + jmp);
+                println!("{} {} -> {}", self.to_string(), offset, (offset as i64) + 3 + sign * jmp);
                 offset + 3
             }
         }
