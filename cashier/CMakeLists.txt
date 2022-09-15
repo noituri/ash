@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
-project(cash)
+project(cashier)
 
 set(CMAKE_CXX_STANDARD 20)
 find_package(LLVM REQUIRED CONFIG)
@@ -12,7 +12,7 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
 
-add_executable(cash main.cpp compiler.h compiler.cpp chunk.h chunk.cpp)
+add_executable(cashier main.cpp compiler.h compiler.cpp chunk.h chunk.cpp)
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
-target_link_libraries(cash ${llvm_libs})
+target_link_libraries(cashier ${llvm_libs})
