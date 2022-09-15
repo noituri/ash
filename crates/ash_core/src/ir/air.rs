@@ -28,9 +28,9 @@ impl Header {
     }
 }
 
-// TODO: Enforce 8 bytes
 #[derive(Serialize)]
 pub enum Inst {
+    None, // Serves as undefined / null / no value
     Fun { params_len: u8, body_len: u32 },
     Call { arg_len: u8 },
     Var,
@@ -40,7 +40,8 @@ pub enum Inst {
     Bool(bool),
     String,
     Ret,
-    None, // Serves as undefined / null / no value
+    VarDecl(Ty),
+    Assign,
 }
 
 // TODO: Enforce 4 bytes
@@ -97,10 +98,13 @@ impl Compiler {
             Stmt::Function(inner) => self.compile_fun(inner.proto.0, inner.body.0),
             Stmt::Expression(expr, _) => self.compile_expr(expr),
             Stmt::Return(expr, _) => self.compile_ret(expr),
+            Stmt::VariableDecl { name, ty, value, .. } => self.compile_var_decl(name, value, ty),
+            Stmt::VariableAssign { name, value, .. } => self.compile_assign(name.0, value),
             _ => unimplemented!(),
         }
     }
 
+    // Must add new instruction in every case
     fn compile_expr(&mut self, expr: Expr) {
         match expr {
             Expr::Literal(value) => self.compile_constant(value),
@@ -123,6 +127,19 @@ impl Compiler {
             ty::Ty::Fun(_, _) => todo!(),
             ty::Ty::DeferTyCheck(_, _) => unreachable!(),
         }
+    }
+
+    fn compile_assign(&mut self, name: String, value: Expr) {
+        self.add_inst(Inst::Assign);
+        self.add_string(name);
+        self.compile_expr(value);
+    }
+
+    fn compile_var_decl(&mut self, name: String, value: Expr, var_ty: ty::Ty) {
+        let var_ty = self.convert_ty(var_ty);
+        self.add_inst(Inst::VarDecl(var_ty));
+        self.compile_expr(value);
+        self.add_string(name);
     }
 
     fn compile_var(&mut self, name: String) {
