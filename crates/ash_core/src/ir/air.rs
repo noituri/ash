@@ -32,6 +32,8 @@ impl Header {
 #[derive(Serialize)]
 pub enum Inst {
     Fun { params_len: u8, body_len: u32 },
+    Call { arg_len: u8 },
+    Var,
     Sum,
     I32(i32),
     F64(f64),
@@ -59,7 +61,6 @@ pub enum Ty {
 
 pub(crate) struct Compiler {
     header: Header,
-    body_size: usize,
 }
 
 impl Compiler {
@@ -69,7 +70,6 @@ impl Compiler {
 
         Self {
             header: Header::new((0, 1, 0)),
-            body_size: 0,
         }
     }
 
@@ -107,6 +107,8 @@ impl Compiler {
             Expr::Binary {
                 left, op, right, ..
             } => self.compile_bin(*left, op, *right),
+            Expr::Call { callee, args, .. } => self.compile_call(*callee, args),
+            Expr::Variable(_, name, _) => self.compile_var(name),
             _ => unimplemented!(),
         }
     }
@@ -121,6 +123,19 @@ impl Compiler {
             ty::Ty::Fun(_, _) => todo!(),
             ty::Ty::DeferTyCheck(_, _) => unreachable!(),
         }
+    }
+
+    fn compile_var(&mut self, name: String) {
+        self.add_inst(Inst::Var);
+        self.add_string(name);
+    }
+
+    fn compile_call(&mut self, callee: Expr, args: Vec<Expr>) {
+       self.add_inst(Inst::Call { arg_len: args.len() as u8 });
+       self.compile_expr(callee);
+       for arg in args {
+        self.compile_expr(arg);
+       }
     }
 
     fn compile_ret(&mut self, expr: Option<Expr>) {
@@ -158,14 +173,15 @@ impl Compiler {
 
     fn compile_fun(&mut self, proto: ProtoFunction, body: Vec<Spanned<Stmt>>) {
         let params_len = proto.params.len();
+        let body_len = body.len();
+        if body_len > u32::MAX as usize {
+            panic!("Body too long")
+        }
 
         self.add_inst(Inst::Fun {
-            params_len: 0,
-            body_len: 0,
+            params_len: params_len as u8,
+            body_len: body_len as u32,
         });
-
-        let prev_size = self.body_size;
-        let fun_idx = self.header.instructions.len() - 1;
 
         self.add_string(proto.name);
         for (_, name, ty) in proto.params {
@@ -175,22 +191,9 @@ impl Compiler {
         let return_ty = self.convert_ty(proto.ty.fun_return_ty());
         self.add_data(Extra::Type(return_ty));
 
-        self.body_size = 0;
         for (stmt, _) in body {
             self.compile_stmt(stmt);
         }
-
-        if self.body_size > u32::MAX as usize {
-            panic!("Body too long")
-        }
-
-        // Patch Function
-        self.header.instructions[fun_idx] = Inst::Fun {
-            params_len: params_len as u8,
-            body_len: self.body_size as u32,
-        };
-
-        self.body_size = prev_size;
     }
 
     fn compile_field(&mut self, name: String, field_ty: ty::Ty) {
@@ -200,7 +203,6 @@ impl Compiler {
     }
 
     fn add_inst(&mut self, inst: Inst) {
-        self.body_size += 1;
         self.header.instructions.push(inst)
     }
 
