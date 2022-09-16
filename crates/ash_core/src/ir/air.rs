@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::{
     core::Spanned,
-    parser::operator::BinaryOp,
+    parser::operator::{BinaryOp, UnaryOp},
     ty::{self, function::ProtoFunction, Value},
 };
 
@@ -33,8 +33,23 @@ pub enum Inst {
     None, // Serves as undefined / null / no value
     Fun { params_len: u8, body_len: u32 },
     Call { arg_len: u8 },
+    Block { len: u32 },
     Var,
     Sum,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Eq,
+    Neq,
+    Gt,
+    Lt,
+    Gte,
+    Lte,
+    LogicAnd,
+    LogicOr,
+    Not,
+    Neg,
     I32(i32),
     F64(f64),
     Bool(bool),
@@ -94,12 +109,14 @@ impl Compiler {
 
     fn compile_stmt(&mut self, stmt: Stmt) {
         match stmt {
+            Stmt::Annotation(_, stmt) => self.compile_stmt(stmt.0), // TODO: Figure it out
             Stmt::ProtoFunction(proto) => self.compile_fun(proto, Vec::new()),
             Stmt::Function(inner) => self.compile_fun(inner.proto.0, inner.body.0),
             Stmt::Expression(expr, _) => self.compile_expr(expr),
             Stmt::Return(expr, _) => self.compile_ret(expr),
             Stmt::VariableDecl { name, ty, value, .. } => self.compile_var_decl(name, value, ty),
             Stmt::VariableAssign { name, value, .. } => self.compile_assign(name.0, value),
+            Stmt::Block(statements) => self.compile_block(statements),
             _ => unimplemented!(),
         }
     }
@@ -108,12 +125,12 @@ impl Compiler {
     fn compile_expr(&mut self, expr: Expr) {
         match expr {
             Expr::Literal(value) => self.compile_constant(value),
+            Expr::Unary { op, right, .. } => self.compile_unary(op, *right),
             Expr::Binary {
                 left, op, right, ..
             } => self.compile_bin(*left, op, *right),
             Expr::Call { callee, args, .. } => self.compile_call(*callee, args),
             Expr::Variable(_, name, _) => self.compile_var(name),
-            _ => unimplemented!(),
         }
     }
 
@@ -127,6 +144,16 @@ impl Compiler {
             ty::Ty::Fun(_, _) => todo!(),
             ty::Ty::DeferTyCheck(_, _) => unreachable!(),
         }
+    }
+
+    fn compile_block(&mut self, statements: Vec<Spanned<Stmt>>) {
+        let body_len = statements.len();
+        if body_len > u32::MAX as usize {
+            panic!("Block body too long")
+        }
+
+        self.add_inst(Inst::Block { len: body_len as u32 });
+        self.compile_statements(statements);
     }
 
     fn compile_assign(&mut self, name: String, value: Expr) {
@@ -167,10 +194,32 @@ impl Compiler {
     fn compile_bin(&mut self, left: Expr, op: BinaryOp, right: Expr) {
         let inst = match op {
             BinaryOp::Sum => Inst::Sum,
-            _ => unimplemented!(),
+            BinaryOp::Sub => Inst::Sub,
+            BinaryOp::Mul => Inst::Mul,
+            BinaryOp::Div => Inst::Div,
+            BinaryOp::Rem => Inst::Rem,
+            BinaryOp::Equal => Inst::Eq,
+            BinaryOp::NotEqual => Inst::Neg,
+            BinaryOp::Gt => Inst::Gt,
+            BinaryOp::Lt => Inst::Lt,
+            BinaryOp::Gte => Inst::Gte,
+            BinaryOp::Lte => Inst::Lte,
+            BinaryOp::LogicAnd => Inst::LogicAnd,
+            BinaryOp::LogicOr => Inst::LogicOr,
         };
+
         self.add_inst(inst);
         self.compile_expr(left);
+        self.compile_expr(right);
+    }
+
+    fn compile_unary(&mut self, op: UnaryOp, right: Expr) {
+        let inst = match op {
+            UnaryOp::Neg => Inst::Neg,
+            UnaryOp::Not => Inst::Not,
+        };
+
+        self.add_inst(inst);
         self.compile_expr(right);
     }
 
@@ -208,9 +257,7 @@ impl Compiler {
         let return_ty = self.convert_ty(proto.ty.fun_return_ty());
         self.add_data(Extra::Type(return_ty));
 
-        for (stmt, _) in body {
-            self.compile_stmt(stmt);
-        }
+        self.compile_statements(body);
     }
 
     fn compile_field(&mut self, name: String, field_ty: ty::Ty) {
