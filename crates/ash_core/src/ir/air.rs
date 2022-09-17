@@ -57,6 +57,10 @@ pub enum Inst {
     Ret,
     VarDecl(Ty),
     Assign,
+    Loop { len: u32 },
+    Repeat,
+    Branch(u32, u32),
+    Break,
 }
 
 // TODO: Enforce 4 bytes
@@ -117,6 +121,7 @@ impl Compiler {
             Stmt::VariableDecl { name, ty, value, .. } => self.compile_var_decl(name, value, ty),
             Stmt::VariableAssign { name, value, .. } => self.compile_assign(name.0, value),
             Stmt::Block(statements) => self.compile_block(statements),
+            Stmt::While(cond, body) => self.compile_while(cond.0, body),
             _ => unimplemented!(),
         }
     }
@@ -144,6 +149,23 @@ impl Compiler {
             ty::Ty::Fun(_, _) => todo!(),
             ty::Ty::DeferTyCheck(_, _) => unreachable!(),
         }
+    }
+
+    fn compile_while(&mut self, cond: Expr, body: Vec<Spanned<Stmt>>) {
+        if body.len() + 1 > u32::MAX as usize {
+            panic!("Block body too long")
+        }
+        self.add_inst(Inst::Loop {
+            len: 1,
+        });
+
+        self.add_inst(Inst::Branch((body.len()+1) as u32, 1));
+        self.compile_expr(cond);
+
+        self.compile_statements(body);
+        self.add_inst(Inst::Repeat);
+
+        self.add_inst(Inst::Break);
     }
 
     fn compile_block(&mut self, statements: Vec<Spanned<Stmt>>) {
@@ -199,7 +221,7 @@ impl Compiler {
             BinaryOp::Div => Inst::Div,
             BinaryOp::Rem => Inst::Rem,
             BinaryOp::Equal => Inst::Eq,
-            BinaryOp::NotEqual => Inst::Neg,
+            BinaryOp::NotEqual => Inst::Neq,
             BinaryOp::Gt => Inst::Gt,
             BinaryOp::Lt => Inst::Lt,
             BinaryOp::Gte => Inst::Gte,
