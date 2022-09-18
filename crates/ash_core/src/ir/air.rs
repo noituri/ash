@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::{
     core::Spanned,
-    parser::operator::{BinaryOp, UnaryOp},
+    parser::{operator::{BinaryOp, UnaryOp}, If},
     ty::{self, function::ProtoFunction, Value},
 };
 
@@ -122,7 +122,7 @@ impl Compiler {
             Stmt::VariableAssign { name, value, .. } => self.compile_assign(name.0, value),
             Stmt::Block(statements) => self.compile_block(statements),
             Stmt::While(cond, body) => self.compile_while(cond.0, body),
-            _ => unimplemented!(),
+            Stmt::If(inner) => self.compile_if(inner),
         }
     }
 
@@ -151,9 +151,40 @@ impl Compiler {
         }
     }
 
+    fn compile_if(&mut self, mut r#if: If<Expr, Stmt>) {
+        let body_len = r#if.then.body.len();
+        if body_len > u32::MAX as usize {
+            panic!("Then body too long")
+        }
+
+        let else_len = if r#if.else_ifs.len() == 0 {
+            r#if.otherwise.len()
+        } else {
+            1
+        };
+        if else_len > u32::MAX as usize {
+            panic!("Else body too long")
+        }
+
+        self.add_inst(Inst::Branch(body_len as u32, else_len as u32));
+        self.compile_expr(r#if.then.condition.0);
+
+        self.compile_statements(r#if.then.body);
+
+        if r#if.else_ifs.len() != 0 {
+            let r#if = If {
+                then: Box::new(r#if.else_ifs.remove(0)),
+                ..r#if
+            };
+            self.compile_if(r#if);
+        } else {
+            self.compile_statements(r#if.otherwise);
+        }
+    }
+
     fn compile_while(&mut self, cond: Expr, body: Vec<Spanned<Stmt>>) {
         if body.len() + 1 > u32::MAX as usize {
-            panic!("Block body too long")
+            panic!("Loop body too long")
         }
         self.add_inst(Inst::Loop {
             len: 1,
