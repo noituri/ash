@@ -6,7 +6,7 @@ use crate::{
     core::{next_id, Context, Id, Spanned},
     parser::{common::calc_block_span, conditional::IfInner, If},
     prelude::Span,
-    ty::{self, function::Function, Ty, Value}, ir::air,
+    ty::{self, function::Function, Ty, Value}, ir::cash,
 };
 
 use crate::ir;
@@ -71,7 +71,7 @@ impl<'a> IR<'a> {
         let ast = self.sort_root(ast);
         let ast = self.desugar_statements(ast);
         dbg!(&ast);
-        air::Compiler::new().run(ast.clone());
+        cash::Compiler::new().run(ast.clone());
         let compiler = Compiler::new(self.context);
         compiler.run(ast)
     }
