@@ -1,10 +1,21 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
+#include <array>
 
-class Cash {
+enum Ty {
+    String,
+    I32,
+    F64,
+    BOOL,
+    VOID,
+};
+
+class Inst {
 public:
-    enum Inst {
+    // 4 bytes INST
+    enum InstTy {
         NONE,
         FUN,
         CALL,
@@ -36,14 +47,6 @@ public:
         REPEAT,
         BRANCH,
         BREAK
-    };
-
-    enum Ty {
-        String,
-        I32,
-        F64,
-        BOOL,
-        VOID,
     };
 
     struct Fun {
@@ -81,6 +84,65 @@ public:
         bool bool_data;
         VarDecl var_decl_data;        
         Loop loop_data;
-        Branch branch_data;ł
+        Branch branch_data;
     };
+
+    InstTy ty_;
+    Data data_;
+};
+
+class Extra {
+public:
+    enum ExtraTy {
+        TYPED_FIELD,
+        TYPE,
+    };
+
+    union Data {
+        Ty ty_data;
+    };
+
+    ExtraTy ty_;
+    Data data_;
+};
+
+class Header {
+public:
+    Header(const std::vector<uint8_t>& bytes);
+
+    std::array<uint8_t, 3> version_;
+    std::vector<Inst> instructions_;
+    std::vector<char> strings_;
+    std::vector<Extra> extra_; 
+};
+
+class CashReader {
+public:
+    CashReader(const std::vector<uint8_t>& bytes);
+    
+    Header Read();
+
+private:
+    size_t offset_;
+    const std::vector<uint8_t>& bytes_;
+
+    std::array<uint8_t, 3> ReadVersion();
+
+    std::vector<Inst> ReadInstructions();
+
+    Inst ReadInst();
+
+    Inst ReadFun();
+
+    Inst ReadCall();
+
+    Inst ReadBlock();
+
+    Inst ReadSimple(Inst::InstTy ty);
+
+    uint8_t ReadU8();
+
+    uint32_t ReadU32();
+
+    uint64_t ReadU64();
 };

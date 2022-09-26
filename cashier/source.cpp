@@ -14,14 +14,17 @@ Source::Source(const char* path) : path_(path) {
     file.seekg(0, std::ios::end);
     size_t size = file.tellg();
     file.seekg(0, std::ios::beg);
-    
-    data_.reserve(size);
-    data_.assign(
+
+    std::vector<uint8_t> bytes;
+    bytes.reserve(size);
+    bytes.assign(
         std::istreambuf_iterator<char>(file),
         std::istreambuf_iterator<char>()
     ); 
 
     file.close();
+
+    data_ = Header(bytes);
 
     std::cout << "File " << path << " loaded. Size: " << size << std::endl;  
 }

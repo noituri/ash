@@ -1,5 +1,5 @@
-fun sum(a: I32, b: I32): I32 = a + b
+fun sum(a: F64, b: F64): F64 = a + b
 
 fun main = {
-    sum(3, 1)
+    sum(3.0, 1.5)
 }
