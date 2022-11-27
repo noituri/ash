@@ -1,7 +1,7 @@
 use std::{ffi::CString, fs::File, io::Write};
 
 use chumsky::chain::Chain;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::Spanned,
@@ -11,7 +11,7 @@ use crate::{
 
 use super::{ir, Expr, Stmt};
 
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Header {
     pub version: (u8, u8, u8),
     pub instructions: Vec<Inst>,
@@ -28,7 +28,7 @@ impl Header {
     }
 }
 
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Inst {
     None, // Serves as undefined / null / no value
     Fun { params_len: u8, body_len: u32 },
@@ -64,13 +64,13 @@ pub enum Inst {
 }
 
 // TODO: Enforce 4 bytes
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub enum Extra {
     TypedField(Ty),
     Type(Ty),
 }
 
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Ty {
     String,
     I32,

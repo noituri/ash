@@ -36,10 +36,13 @@ impl<'a, 'c> Compiler<'a, 'c> {
         use cash::Inst;
         while let Some(inst) = self.read_inst() {
             match inst {
-                Inst::Fun { params_len, body_len } => {
-                    let name = self.read_string();
-                },
-                _ => todo!()
+                Inst::Fun {
+                    params_len: _,
+                    body_len: _,
+                } => {
+                    let _name = self.read_string();
+                }
+                _ => todo!(),
             }
         }
     }

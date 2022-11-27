@@ -1,6 +1,9 @@
-mod cash_reader;
+use cash_file::CashFile;
+
+mod cash_file;
 mod compiler;
 
 fn main() {
-    println!("Hello, world!");
+    let cash_file = CashFile::from_file("../test.cash").unwrap();
+    cash_file.compile();
 }

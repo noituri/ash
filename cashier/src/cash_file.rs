@@ -1,20 +1,28 @@
+use std::{error::Error, fs, path::PathBuf};
+
 use ash_core::prelude::*;
-use inkwell::{builder::Builder, context::Context, module::Module, passes::PassManager};
+use inkwell::{context::Context, passes::PassManager};
 
 use crate::compiler::Compiler;
 
-pub struct CashReader {
+pub struct CashFile {
     src: cash::Header,
 }
 
-impl CashReader {
+impl CashFile {
     const MODULE_NAME: &str = "ash_root";
 
     pub fn new(src: cash::Header) -> Self {
         Self { src }
     }
 
-    pub fn compile(&mut self) {
+    pub fn from_file<P: Into<PathBuf>>(path: P) -> Result<Self, Box<dyn Error>> {
+        let bytes = fs::read(path.into())?;
+        let src = bincode::deserialize(&bytes[..])?;
+        Ok(Self::new(src))
+    }
+
+    pub fn compile(&self) {
         let ctx = Context::create();
         let builder = ctx.create_builder();
         let module = ctx.create_module(Self::MODULE_NAME);

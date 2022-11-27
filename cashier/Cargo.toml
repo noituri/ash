@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 ash_core = { path = "../crates/ash_core" }
 inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "845270c", features = ["llvm14-0"] }
+bincode = "1.3.3"
