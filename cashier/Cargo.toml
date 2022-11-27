@@ -1,0 +1,10 @@
+[package]
+name = "cashier"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ash_core = { path = "../crates/ash_core" }
+inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "845270c", features = ["llvm14-0"] }
