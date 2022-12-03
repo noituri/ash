@@ -28,7 +28,7 @@ impl Header {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum Inst {
     None, // Serves as undefined / null / no value
     Fun { params_len: u8, body_len: u32 },
@@ -69,7 +69,7 @@ pub enum Extra {
     Type(Ty),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum Ty {
     String,
     I32,

@@ -1,13 +1,23 @@
-use std::{ffi::c_char, fmt};
+use std::{collections::HashMap, ffi::c_char, fmt};
 
 use ash_core::prelude::*;
 use llvm_sys::{
     core::{
-        LLVMAddFunction, LLVMFloatType, LLVMFloatTypeInContext, LLVMFunctionType,
-        LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMVoidTypeInContext, LLVMGetParams, LLVMGetParam, LLVMSetValueName2, LLVMAppendBasicBlockInContext, LLVMPositionBuilderAtEnd, LLVMBuildRetVoid, LLVMBuildRet,
+        LLVMAddFunction, LLVMAppendBasicBlockInContext, LLVMBuildAdd, LLVMBuildAlloca,
+        LLVMBuildFAdd, LLVMBuildFMul, LLVMBuildFSub, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet,
+        LLVMBuildRetVoid, LLVMBuildStore, LLVMBuildSub, LLVMConstReal, LLVMDoubleTypeInContext,
+        LLVMFloatTypeInContext, LLVMFunctionType, LLVMGetParam, LLVMGetTypeKind,
+        LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMPositionBuilderAtEnd, LLVMSetValueName2,
+        LLVMTypeOf, LLVMVoidTypeInContext,
     },
-    prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef}, LLVMValue,
+    prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef},
+    LLVMTypeKind,
 };
+
+use crate::scope::Scope;
+
+pub type BinOpFn =
+    unsafe extern "C" fn(LLVMBuilderRef, LLVMValueRef, LLVMValueRef, *const i8) -> LLVMValueRef;
 
 pub struct Compiler<'a> {
     ctx: LLVMContextRef,
@@ -17,6 +27,8 @@ pub struct Compiler<'a> {
     inst_offset: usize,
     str_offset: usize,
     data_offset: usize,
+    scope: Scope<'a>,
+    funs: HashMap<&'a str, LLVMValueRef>,
 }
 
 impl<'a> Compiler<'a> {
@@ -34,6 +46,8 @@ impl<'a> Compiler<'a> {
             inst_offset: 0,
             str_offset: 0,
             data_offset: 0,
+            scope: Scope::new(),
+            funs: HashMap::new(),
         }
     }
 
@@ -51,14 +65,11 @@ impl<'a> Compiler<'a> {
                 body_len,
             } => self.compile_fun(params_len as usize, body_len as usize),
             Inst::Ret => self.compile_ret(),
-            Inst::Call { arg_len } => todo!(),
-            Inst::Block { len } => todo!(),
-            Inst::Var => todo!(),
-            Inst::Sum => todo!(),
-            Inst::Sub => todo!(),
-            Inst::Mul => todo!(),
-            Inst::Div => todo!(),
-            Inst::Rem => todo!(),
+            Inst::F64(v) => self.compile_f64(v),
+            Inst::Sum | Inst::Sub | Inst::Mul | Inst::Div | Inst::Rem => self.compile_bin_op(inst),
+            Inst::Var => self.compile_load_var(),
+            Inst::Block { len: _ } => todo!(),
+            Inst::Call { arg_len } => self.compile_call(arg_len as usize),
             Inst::Eq => todo!(),
             Inst::Neq => todo!(),
             Inst::Gt => todo!(),
@@ -70,12 +81,11 @@ impl<'a> Compiler<'a> {
             Inst::Not => todo!(),
             Inst::Neg => todo!(),
             Inst::I32(_) => todo!(),
-            Inst::F64(_) => todo!(),
             Inst::Bool(_) => todo!(),
             Inst::String => todo!(),
             Inst::VarDecl(_) => todo!(),
             Inst::Assign => todo!(),
-            Inst::Loop { len } => todo!(),
+            Inst::Loop { len: _ } => todo!(),
             Inst::Repeat => todo!(),
             Inst::Branch(_, _) => todo!(),
             Inst::Break => todo!(),
@@ -83,6 +93,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    // TODO Compile declarations first
     fn compile_fun(&mut self, params_len: usize, body_len: usize) -> LLVMValueRef {
         let name = self.read_string();
         println!("Compiling function: {name}");
@@ -101,26 +112,83 @@ impl<'a> Compiler<'a> {
         let fun = unsafe {
             let fun_ty = LLVMFunctionType(fun_ty, param_types.as_mut_ptr(), params_len as u32, 0);
             let fun = LLVMAddFunction(self.module, name.llvm_str(), fun_ty);
-            
+            let block = LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr(b"entry\0").llvm_str());
+            LLVMPositionBuilderAtEnd(self.builder, block);
+
+            self.funs.insert(name.as_str(), fun);
+
+            self.scope.enter();
             for (i, name) in param_names.iter().enumerate() {
                 let param = LLVMGetParam(fun, i as u32);
-                // Names can't contain null bytes hence len - 1
-                LLVMSetValueName2(param, name.llvm_str(), name.len()-1)
-            }
+                let ty = param_types[i];
+                let alloca = LLVMBuildAlloca(self.builder, ty, name.llvm_str());
 
-            let block = LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr("entry".as_bytes()).llvm_str());
-            LLVMPositionBuilderAtEnd(self.builder, block);
+                LLVMBuildStore(self.builder, param, alloca);
+                self.scope.set_var(name.as_str(), (alloca, ty));
+
+                // Names can't contain null bytes hence len - 1
+                LLVMSetValueName2(param, name.llvm_str(), name.len() - 1)
+            }
 
             fun
         };
-        
 
         for _ in 0..body_len {
             let stmt = self.read_inst().expect("expected function statement");
             self.compile_inst(stmt);
         }
+        self.scope.leave();
+        // TODO: verify fun
 
         fun
+    }
+
+    fn compile_call(&mut self, _arg_len: usize) -> LLVMValueRef {
+        todo!()
+    }
+
+    fn compile_f64(&mut self, v: f64) -> LLVMValueRef {
+        unsafe { LLVMConstReal(LLVMDoubleTypeInContext(self.ctx), v) }
+    }
+
+    fn compile_load_var(&mut self) -> LLVMValueRef {
+        let name = self.read_string();
+        if let Some(value) = self.funs.get(name.as_str()) {
+            return *value;
+        }
+
+        let (value, ty) = self.scope.get_var(name.as_str());
+        unsafe { LLVMBuildLoad2(self.builder, ty, value, name.llvm_str()) }
+    }
+
+    fn compile_bin_op(&mut self, op: cash::Inst) -> LLVMValueRef {
+        let lh = self.read_inst().expect("expected left operand");
+        let rh = self.read_inst().expect("expected right operand");
+        let lh = self.compile_inst(lh);
+        let rh = self.compile_inst(rh);
+
+        let bin_op = |fi: BinOpFn, ff: BinOpFn| unsafe {
+            let kind = LLVMGetTypeKind(LLVMTypeOf(lh));
+            match kind {
+                LLVMTypeKind::LLVMDoubleTypeKind | LLVMTypeKind::LLVMFloatTypeKind => {
+                    ff(self.builder, lh, rh, RawStr(b"tmp\0").llvm_str())
+                }
+                LLVMTypeKind::LLVMIntegerTypeKind => {
+                    fi(self.builder, lh, rh, RawStr(b"tmp\0").llvm_str())
+                }
+                _ => unreachable!(),
+            }
+        };
+
+        use cash::Inst;
+        match op {
+            Inst::Sum => bin_op(LLVMBuildAdd, LLVMBuildFAdd),
+            Inst::Sub => bin_op(LLVMBuildSub, LLVMBuildFSub),
+            Inst::Mul => bin_op(LLVMBuildMul, LLVMBuildFMul),
+            Inst::Div => todo!(),
+            Inst::Rem => todo!(),
+            _ => unreachable!(),
+        }
     }
 
     fn compile_ret(&mut self) -> LLVMValueRef {
@@ -201,6 +269,10 @@ impl<'a> RawStr<'a> {
     }
 
     pub unsafe fn llvm_str(&self) -> *const c_char {
+        let b = self.0.last().unwrap();
+        if *b != '\0' as u8 {
+            panic!("Expected null terminated string");
+        }
         self.0.as_ptr() as *const _
     }
 }

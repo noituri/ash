@@ -13,7 +13,7 @@ pub struct CashFile {
 }
 
 impl CashFile {
-    const MODULE_NAME: RawStr<'static> = RawStr("ash_root".as_bytes());
+    const MODULE_NAME: RawStr<'static> = RawStr(b"ash_root\0");
 
     pub fn new(src: cash::Header) -> Self {
         Self { src }
@@ -29,8 +29,7 @@ impl CashFile {
         unsafe {
             let ctx = LLVMContextCreate();
             let builder = LLVMCreateBuilderInContext(ctx);
-            let module =
-                LLVMModuleCreateWithNameInContext(Self::MODULE_NAME.llvm_str(), ctx);
+            let module = LLVMModuleCreateWithNameInContext(Self::MODULE_NAME.llvm_str(), ctx);
             // TODO: Optimization pass
             // let fpm = PassManager::create(&module);
             // fpm.add_instruction_combining_pass();
