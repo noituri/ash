@@ -64,9 +64,8 @@ pub enum Inst {
 }
 
 // TODO: Enforce 4 bytes
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Extra {
-    TypedField(Ty),
     Type(Ty),
 }
 
@@ -303,19 +302,19 @@ impl Compiler {
         });
 
         self.add_string(proto.name);
+        let return_ty = self.convert_ty(proto.ty.fun_return_ty());
+        self.add_data(Extra::Type(return_ty));
+        
         for (_, name, ty) in proto.params {
             self.compile_field(name, ty);
         }
-
-        let return_ty = self.convert_ty(proto.ty.fun_return_ty());
-        self.add_data(Extra::Type(return_ty));
 
         self.compile_statements(body);
     }
 
     fn compile_field(&mut self, name: String, field_ty: ty::Ty) {
         let field_ty = self.convert_ty(field_ty);
-        self.add_data(Extra::TypedField(field_ty));
+        self.add_data(Extra::Type(field_ty));
         self.add_string(name);
     }
 

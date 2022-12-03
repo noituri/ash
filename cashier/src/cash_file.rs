@@ -1,16 +1,19 @@
 use std::{error::Error, fs, path::PathBuf};
 
 use ash_core::prelude::*;
-use inkwell::{context::Context, passes::PassManager};
+use llvm_sys::core::{
+    LLVMContextCreate, LLVMContextDispose, LLVMCreateBuilderInContext, LLVMDisposeBuilder,
+    LLVMDisposeModule, LLVMDumpModule, LLVMModuleCreateWithNameInContext,
+};
 
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, RawStr};
 
 pub struct CashFile {
     src: cash::Header,
 }
 
 impl CashFile {
-    const MODULE_NAME: &str = "ash_root";
+    const MODULE_NAME: RawStr<'static> = RawStr("ash_root".as_bytes());
 
     pub fn new(src: cash::Header) -> Self {
         Self { src }
@@ -23,22 +26,31 @@ impl CashFile {
     }
 
     pub fn compile(&self) {
-        let ctx = Context::create();
-        let builder = ctx.create_builder();
-        let module = ctx.create_module(Self::MODULE_NAME);
-        let fpm = PassManager::create(&module);
-        fpm.add_instruction_combining_pass();
-        fpm.add_reassociate_pass();
-        fpm.add_gvn_pass();
-        fpm.add_cfg_simplification_pass();
-        fpm.add_basic_alias_analysis_pass();
-        fpm.add_promote_memory_to_register_pass();
-        fpm.add_instruction_combining_pass();
-        fpm.add_reassociate_pass();
+        unsafe {
+            let ctx = LLVMContextCreate();
+            let builder = LLVMCreateBuilderInContext(ctx);
+            let module =
+                LLVMModuleCreateWithNameInContext(Self::MODULE_NAME.llvm_str(), ctx);
+            // TODO: Optimization pass
+            // let fpm = PassManager::create(&module);
+            // fpm.add_instruction_combining_pass();
+            // fpm.add_reassociate_pass();
+            // fpm.add_gvn_pass();
+            // fpm.add_cfg_simplification_pass();
+            // fpm.add_basic_alias_analysis_pass();
+            // fpm.add_promote_memory_to_register_pass();
+            // fpm.add_instruction_combining_pass();
+            // fpm.add_reassociate_pass();
 
-        fpm.initialize();
+            // fpm.initialize();
 
-        let mut compiler = Compiler::new(&self.src, &ctx, builder, module, fpm);
-        compiler.compile();
+            let mut compiler = Compiler::new(&self.src, ctx, builder, module);
+            compiler.compile();
+
+            LLVMDumpModule(module);
+            LLVMDisposeModule(module);
+            LLVMDisposeBuilder(builder);
+            LLVMContextDispose(ctx);
+        }
     }
 }
