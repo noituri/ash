@@ -8,7 +8,7 @@ use llvm_sys::{
         LLVMBuildRetVoid, LLVMBuildStore, LLVMBuildSub, LLVMConstReal, LLVMDoubleTypeInContext,
         LLVMFloatTypeInContext, LLVMFunctionType, LLVMGetParam, LLVMGetTypeKind,
         LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMPositionBuilderAtEnd, LLVMSetValueName2,
-        LLVMTypeOf, LLVMVoidTypeInContext,
+        LLVMTypeOf, LLVMVoidTypeInContext, LLVMBuildCall2, LLVMGetReturnType, LLVMGetNamedFunction, LLVMConstNull, LLVMGetElementType, LLVMDumpValue, LLVMDumpType, LLVMIsAFunction,
     },
     prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef},
     LLVMTypeKind,
@@ -143,9 +143,25 @@ impl<'a> Compiler<'a> {
         fun
     }
 
-    fn compile_call(&mut self, _arg_len: usize) -> LLVMValueRef {
-        todo!()
-    }
+    fn compile_call(&mut self, arg_len: usize) -> LLVMValueRef {
+        let callee = self.read_inst().unwrap();
+        let callee = self.compile_inst(callee);
+        let mut args = (0..arg_len).map(|_| {
+            let inst = self.read_inst().expect("expected arg");
+            self.compile_inst(inst)
+        }).collect::<Vec<_>>();
+
+        unsafe {
+            LLVMBuildCall2(
+                self.builder,
+                LLVMGetElementType(LLVMTypeOf(callee)),
+                callee,
+                args.as_mut_ptr(),
+                args.len() as u32,
+                RawStr(b"call\0").llvm_str()
+            )
+        }
+     }
 
     fn compile_f64(&mut self, v: f64) -> LLVMValueRef {
         unsafe { LLVMConstReal(LLVMDoubleTypeInContext(self.ctx), v) }
@@ -210,7 +226,7 @@ impl<'a> Compiler<'a> {
             let ty = match ty {
                 cash::Ty::String => todo!(),
                 cash::Ty::I32 => LLVMInt32TypeInContext(self.ctx),
-                cash::Ty::F64 => LLVMFloatTypeInContext(self.ctx),
+                cash::Ty::F64 => LLVMDoubleTypeInContext(self.ctx),
                 cash::Ty::Bool => LLVMInt1TypeInContext(self.ctx),
                 cash::Ty::Void => LLVMVoidTypeInContext(self.ctx),
             };
