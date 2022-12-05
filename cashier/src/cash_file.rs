@@ -1,10 +1,10 @@
 use std::{error::Error, fs, path::PathBuf};
 
 use ash_core::prelude::*;
-use llvm_sys::core::{
+use llvm_sys::{core::{
     LLVMContextCreate, LLVMContextDispose, LLVMCreateBuilderInContext, LLVMDisposeBuilder,
-    LLVMDisposeModule, LLVMDumpModule, LLVMModuleCreateWithNameInContext,
-};
+    LLVMDisposeModule, LLVMDumpModule, LLVMModuleCreateWithNameInContext, LLVMCreatePassManager, LLVMCreateFunctionPassManagerForModule, LLVMInitializeFunctionPassManager,
+}, transforms::{instcombine::LLVMAddInstructionCombiningPass, scalar::{LLVMAddReassociatePass, LLVMAddGVNPass, LLVMAddCFGSimplificationPass}}};
 
 use crate::compiler::{Compiler, RawStr};
 
@@ -30,20 +30,14 @@ impl CashFile {
             let ctx = LLVMContextCreate();
             let builder = LLVMCreateBuilderInContext(ctx);
             let module = LLVMModuleCreateWithNameInContext(Self::MODULE_NAME.llvm_str(), ctx);
-            // TODO: Optimization pass
-            // let fpm = PassManager::create(&module);
-            // fpm.add_instruction_combining_pass();
-            // fpm.add_reassociate_pass();
-            // fpm.add_gvn_pass();
-            // fpm.add_cfg_simplification_pass();
-            // fpm.add_basic_alias_analysis_pass();
-            // fpm.add_promote_memory_to_register_pass();
-            // fpm.add_instruction_combining_pass();
-            // fpm.add_reassociate_pass();
+            let fpm = LLVMCreateFunctionPassManagerForModule(module);
+            LLVMAddInstructionCombiningPass(fpm);
+            LLVMAddReassociatePass(fpm);
+            LLVMAddGVNPass(fpm);
+            LLVMAddCFGSimplificationPass(fpm);
+            LLVMInitializeFunctionPassManager(fpm);
 
-            // fpm.initialize();
-
-            let mut compiler = Compiler::new(&self.src, ctx, builder, module);
+            let mut compiler = Compiler::new(&self.src, ctx, builder, module, fpm);
             compiler.compile();
 
             LLVMDumpModule(module);

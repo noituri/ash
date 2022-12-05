@@ -70,7 +70,6 @@ impl<'a> IR<'a> {
     pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
         let ast = self.sort_root(ast);
         let ast = self.desugar_statements(ast);
-        dbg!(&ast);
         cash::Compiler::new().run(ast.clone());
         let compiler = Compiler::new(self.context);
         compiler.run(ast)
@@ -449,7 +448,6 @@ impl<'a> IR<'a> {
             .params
             .iter_mut()
             .for_each(|(id, name, _)| self.mangle_var_decl_name(*id, name));
-
         let fun_ty = ir_fun.proto.0.ty.fun_return_ty();
         let span = fun.body.1.clone();
         let body = match fun.body.0 {
@@ -463,7 +461,7 @@ impl<'a> IR<'a> {
             }
             _ => unreachable!("Invalid function body"),
         };
-
+    
         ir_fun.body = (body, span.clone());
 
         // TODO: Mangle function name
@@ -486,14 +484,13 @@ impl<'a> IR<'a> {
         &mut self,
         mut body: Vec<Spanned<ir::Stmt>>,
         ty: Ty,
-    ) -> Vec<Spanned<ir::Stmt>> {
-        if ty == Ty::Void {
-            return body;
-        }
-
+    ) -> Vec<Spanned<ir::Stmt>> {        
         let last = body.remove(body.len() - 1);
         let return_stmt = if matches!(last.0, ir::Stmt::Return(_, _)) {
             last
+        } else if ty == Ty::Void {
+            body.push(last);
+            (ir::Stmt::Return(None, ty), Default::default())
         } else {
             let expr = if let ir::Stmt::Expression(expr, _) = last.0 {
                 expr
@@ -502,7 +499,7 @@ impl<'a> IR<'a> {
             };
             (ir::Stmt::Return(Some(expr), ty), last.1)
         };
-
+    
         body.push(return_stmt);
         body
     }

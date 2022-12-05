@@ -99,7 +99,6 @@ impl Compiler {
 
     fn create_file(&self) {
         let bytes = bincode::serialize(&self.header).unwrap();
-        dbg!(&bytes);
         let mut f = File::create("test.cash").unwrap();
         f.write_all(&bytes).unwrap();
     }

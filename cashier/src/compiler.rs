@@ -8,10 +8,10 @@ use llvm_sys::{
         LLVMBuildRetVoid, LLVMBuildStore, LLVMBuildSub, LLVMConstReal, LLVMDoubleTypeInContext,
         LLVMFloatTypeInContext, LLVMFunctionType, LLVMGetParam, LLVMGetTypeKind,
         LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMPositionBuilderAtEnd, LLVMSetValueName2,
-        LLVMTypeOf, LLVMVoidTypeInContext, LLVMBuildCall2, LLVMGetReturnType, LLVMGetNamedFunction, LLVMConstNull, LLVMGetElementType, LLVMDumpValue, LLVMDumpType, LLVMIsAFunction,
+        LLVMTypeOf, LLVMVoidTypeInContext, LLVMBuildCall2, LLVMGetReturnType, LLVMGetNamedFunction, LLVMConstNull, LLVMGetElementType, LLVMDumpValue, LLVMDumpType, LLVMIsAFunction, LLVMConstInt, LLVMConstStringInContext, LLVMPointerType, LLVMInt8TypeInContext, LLVMBuildGlobalStringPtr, LLVMRunFunctionPassManager,
     },
-    prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef},
-    LLVMTypeKind,
+    prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef, LLVMPassManagerRef},
+    LLVMTypeKind, analysis::{LLVMVerifyFunction, LLVMVerifierFailureAction},
 };
 
 use crate::scope::Scope;
@@ -23,6 +23,7 @@ pub struct Compiler<'a> {
     ctx: LLVMContextRef,
     builder: LLVMBuilderRef,
     module: LLVMModuleRef,
+    fpm: LLVMPassManagerRef,
     src: &'a cash::Header,
     inst_offset: usize,
     str_offset: usize,
@@ -37,12 +38,14 @@ impl<'a> Compiler<'a> {
         ctx: LLVMContextRef,
         builder: LLVMBuilderRef,
         module: LLVMModuleRef,
+        fpm: LLVMPassManagerRef,
     ) -> Self {
         Self {
             ctx,
             src,
             builder,
             module,
+            fpm,
             inst_offset: 0,
             str_offset: 0,
             data_offset: 0,
@@ -65,7 +68,9 @@ impl<'a> Compiler<'a> {
                 body_len,
             } => self.compile_fun(params_len as usize, body_len as usize),
             Inst::Ret => self.compile_ret(),
+            Inst::I32(v) => self.compile_i32(v),
             Inst::F64(v) => self.compile_f64(v),
+            Inst::String => self.compile_string(),
             Inst::Sum | Inst::Sub | Inst::Mul | Inst::Div | Inst::Rem => self.compile_bin_op(inst),
             Inst::Var => self.compile_load_var(),
             Inst::Block { len: _ } => todo!(),
@@ -79,10 +84,8 @@ impl<'a> Compiler<'a> {
             Inst::LogicAnd => todo!(),
             Inst::LogicOr => todo!(),
             Inst::Not => todo!(),
-            Inst::Neg => todo!(),
-            Inst::I32(_) => todo!(),
             Inst::Bool(_) => todo!(),
-            Inst::String => todo!(),
+            Inst::Neg => todo!(),
             Inst::VarDecl(_) => todo!(),
             Inst::Assign => todo!(),
             Inst::Loop { len: _ } => todo!(),
@@ -112,19 +115,23 @@ impl<'a> Compiler<'a> {
         let fun = unsafe {
             let fun_ty = LLVMFunctionType(fun_ty, param_types.as_mut_ptr(), params_len as u32, 0);
             let fun = LLVMAddFunction(self.module, name.llvm_str(), fun_ty);
-            let block = LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr(b"entry\0").llvm_str());
-            LLVMPositionBuilderAtEnd(self.builder, block);
+            if body_len != 0 {
+                let block = LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr(b"entry\0").llvm_str());
+                LLVMPositionBuilderAtEnd(self.builder, block);
+            }
 
             self.funs.insert(name.as_str(), fun);
 
             self.scope.enter();
             for (i, name) in param_names.iter().enumerate() {
                 let param = LLVMGetParam(fun, i as u32);
-                let ty = param_types[i];
-                let alloca = LLVMBuildAlloca(self.builder, ty, name.llvm_str());
-
-                LLVMBuildStore(self.builder, param, alloca);
-                self.scope.set_var(name.as_str(), (alloca, ty));
+                if body_len != 0 {
+                    let ty = param_types[i];
+                    let alloca = LLVMBuildAlloca(self.builder, ty, name.llvm_str());
+    
+                    LLVMBuildStore(self.builder, param, alloca);
+                    self.scope.set_var(name.as_str(), (alloca, ty));
+                }
 
                 // Names can't contain null bytes hence len - 1
                 LLVMSetValueName2(param, name.llvm_str(), name.len() - 1)
@@ -138,7 +145,11 @@ impl<'a> Compiler<'a> {
             self.compile_inst(stmt);
         }
         self.scope.leave();
-        // TODO: verify fun
+        
+        unsafe {
+            LLVMVerifyFunction(fun, LLVMVerifierFailureAction::LLVMAbortProcessAction);
+            LLVMRunFunctionPassManager(self.fpm, fun);
+        }
 
         fun
     }
@@ -150,7 +161,7 @@ impl<'a> Compiler<'a> {
             let inst = self.read_inst().expect("expected arg");
             self.compile_inst(inst)
         }).collect::<Vec<_>>();
-
+        
         unsafe {
             LLVMBuildCall2(
                 self.builder,
@@ -158,13 +169,25 @@ impl<'a> Compiler<'a> {
                 callee,
                 args.as_mut_ptr(),
                 args.len() as u32,
-                RawStr(b"call\0").llvm_str()
+                RawStr::null().llvm_str(),
             )
         }
      }
 
+    fn compile_i32(&mut self, v: i32) -> LLVMValueRef {
+        unsafe { LLVMConstInt(LLVMInt32TypeInContext(self.ctx), v as u64, 1) }
+    }
+    
     fn compile_f64(&mut self, v: f64) -> LLVMValueRef {
         unsafe { LLVMConstReal(LLVMDoubleTypeInContext(self.ctx), v) }
+    }
+
+    fn compile_string(&mut self) -> LLVMValueRef {
+        let v = self.read_string();
+        unsafe {
+            // TODO: Use String struct 
+            LLVMBuildGlobalStringPtr(self.builder, v.llvm_str(), RawStr(b"strtmp\0").llvm_str())
+        }
     }
 
     fn compile_load_var(&mut self) -> LLVMValueRef {
@@ -224,7 +247,7 @@ impl<'a> Compiler<'a> {
     fn lower_type(&mut self, ty: cash::Ty) -> LLVMTypeRef {
         unsafe {
             let ty = match ty {
-                cash::Ty::String => todo!(),
+                cash::Ty::String => LLVMPointerType(LLVMInt8TypeInContext(self.ctx), 0),
                 cash::Ty::I32 => LLVMInt32TypeInContext(self.ctx),
                 cash::Ty::F64 => LLVMDoubleTypeInContext(self.ctx),
                 cash::Ty::Bool => LLVMInt1TypeInContext(self.ctx),
@@ -275,6 +298,10 @@ impl<'a> Compiler<'a> {
 pub struct RawStr<'a>(pub &'a [u8]);
 
 impl<'a> RawStr<'a> {
+    pub fn null() -> Self {
+        Self(b"\0")
+    }
+
     pub fn as_str(&self) -> &'a str {
         std::str::from_utf8(self.0).unwrap()
     }

@@ -1,5 +1,12 @@
-fun sum(a: F64, b: F64): F64 = a + b
+@[builtin]
+fun printf(format: String, d: I32)
+
+fun sum(a: I32, b: I32): I32 = a + b
+
+fun writeln(msg: String) = {
+    printf(msg, 0)
+}
 
 fun main = {
-    sum(1.0, 3.5)
+    printf("%d", sum(1, 3))
 }

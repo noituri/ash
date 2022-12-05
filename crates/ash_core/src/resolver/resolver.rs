@@ -143,7 +143,6 @@ impl<'a> Resolver<'a> {
                 let (proto, _) = &fun.proto;
                 self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
-
                 let prev = self.current_function;
                 self.current_function = Some(FunctionType::Function);
 
