@@ -1,25 +1,25 @@
 @[builtin]
-fun println(msg: String)
+fun println(msg: str)
 
-// fun tt = a + b
 
-// let b = a
-// let a = 2 + d
-// let a = c
-// let c = b
+// val b = a;
+// val a = 2 + d;
+// val a = c;
+// val c = b;
+val a = d;
 
-// let d = 1
+val d = 1;
 
-fun main = {
-    println "Hello World"
-    let a = a
-    a = 4
+fun main() {
+    println("Hello World");
+    var a = a;
+    a = 4;
     a = {
-        let a = a
-        let b = 3
-        sum a, sum b, 1
-    }
-    // let b = {}
+        val a = a + 1;
+        val b = 3;
+        break sum(a, b);
+    };
+    // val b = {};
 }
 
-fun sum(a: I32, b: I32): I32 = a + b
+fun sum(a: i32, b: i32) > i32 => a + b;

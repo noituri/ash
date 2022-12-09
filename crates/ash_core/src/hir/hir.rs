@@ -1,4 +1,4 @@
-use crate::{ty::{function::{Function, ProtoFunction}, Value}, core::{Spanned, Id}, parser::{If, operator::{UnaryOp, BinaryOp}}};
+use crate::{ty::{function::{Function, ProtoFunction}, Value, Ty}, core::{Spanned, Id}, parser::{If, operator::{UnaryOp, BinaryOp}}};
 
 pub(crate) type Body = Vec<Spanned<Stmt>>;
 
@@ -9,6 +9,7 @@ pub(crate) enum Stmt {
     DeclVar {
         id: Id,
         name: String,
+        ty: Option<Ty>,
         value: Option<Expr>
     },
     StoreVar {
@@ -22,6 +23,12 @@ pub(crate) enum Stmt {
     Break,
     Ret(Option<Expr>),
     Expr(Expr)
+}
+
+impl Stmt {
+    pub fn is_ret(&self) -> bool {
+        matches!(self, Self::Ret(_))
+    }
 }
 
 #[derive(Debug)]

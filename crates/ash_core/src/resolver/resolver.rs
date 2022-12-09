@@ -6,7 +6,7 @@ use crate::{
     core::{Context, Id, Spanned},
     parser::{expr::Expr, stmt::Stmt, If},
     prelude::{AshResult, Span},
-    ty::{function::MAX_FUNCTION_PARAMS, FunctionType, Ty},
+    ty::{function::{MAX_FUNCTION_PARAMS, ProtoFunction}, FunctionType, Ty},
 };
 
 pub(crate) type Scope = HashMap<String, VarData>;
@@ -143,6 +143,8 @@ impl<'a> Resolver<'a> {
                 }
                 self.declare(proto.name.clone(), proto.id, false, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
+
+                self.context.new_var(proto.id, proto.name.clone(), None);
             }
             Stmt::Function(fun) => {
                 let (proto, _) = &fun.proto;
@@ -162,11 +164,13 @@ impl<'a> Resolver<'a> {
                     for (id, param, ty) in proto.params.iter() {
                         self.declare(param.clone(), *id, false, Some(ty.clone()));
                         self.define(param.clone());
+                        self.context.new_var(*id, param.clone(), Some(ty.clone()));
                     }
                     self.resolve_stmt(&fun.body);
 
                     self.leave_scope();
                 }
+                self.context.new_var(proto.id, proto.name.clone(), None);
                 self.current_function = prev;
             }
             Stmt::While((cond, span), body) => {
@@ -263,9 +267,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
-        for scope in self.scopes.iter_mut() {
+        for scope in self.scopes.iter_mut().rev() {
             if let Some(data) = scope.get(name) {
                 let points_to = data.id;
+                if !data.is_defined {
+                    continue;
+                }
                 self.context.resolve(id, data.is_mutable, data.ty.clone(), points_to);
                 self.detect_deps(points_to, span.clone());
                 return;
@@ -274,6 +281,7 @@ impl<'a> Resolver<'a> {
 
         self.new_error("Variable does not exist", span);
     }
+
 
     fn block(&mut self, statements: &'a [Spanned<Stmt>], is_expr: bool) {
         let prev = self.is_expr_block;

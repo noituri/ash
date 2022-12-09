@@ -1,22 +1,25 @@
 use crate::{core::{Context, Spanned, Id, next_id, Annotation}, parser::{Stmt, Expr, If, IfInner, operator::{UnaryOp, BinaryOp}}, ty::{function::{Function, ProtoFunction}, Ty, Value}, prelude::Span};
 
-use super::{scope::Scope, hir::{Body, self}};
+use super::{scope::Scope, hir::{Body, self}, common::sort_root};
 
 pub(crate) struct Desugarer<'a> {
     ctx: &'a mut Context,
     scopes: Scope<Body>,
-    tmp_vars: Vec<(Id, String)>
+    tmp_vars: Vec<(Id, String)>,
+    mangle_names: bool,
 }
 
 impl<'a> Desugarer<'a> {
-    pub fn run(ctx: &'a mut Context, stmts: Vec<Spanned<Stmt>>) -> Vec<Spanned<hir::Stmt>> {
+    pub fn run(ctx: &'a mut Context, ast: Vec<Spanned<Stmt>>) -> Vec<Spanned<hir::Stmt>> {
         let mut desugarer = Self {
             ctx,
             scopes: Scope::new(),
             tmp_vars: Vec::new(),
+            mangle_names: true,
         };
 
-        desugarer.multiple_stmt(stmts);
+        let ast = sort_root(&desugarer.ctx, ast); 
+        desugarer.multiple_stmt(ast);
         desugarer.scopes.leave()
     }
 
@@ -61,7 +64,7 @@ impl<'a> Desugarer<'a> {
     }
 
     fn var(&self, id: Id) -> hir::Expr {
-        let name = self.mangled_name(id);
+        let name = self.mangled_pointed_name(id);
         hir::Expr::LoadVar(id, name)
     }
 
@@ -127,27 +130,46 @@ impl<'a> Desugarer<'a> {
             .params_mut()
             .iter_mut()
             .for_each(|(id, name, _)| *name = self.mangled_name(*id));
-        
+       
         let ret_ty = fun.ret_ty();
+        let mut proto = fun.proto.0;
+        let proto_span = fun.proto.1;
+        let prev = self.mangle_names;
+        self.mangle_names = proto.name != "main" && self.mangle_names;
+        proto.name = self.mangled_name(proto.id);
+        self.mangle_names = prev;
+
         let body = fun.body.0;
         let body_span = fun.body.1;
-        let body = self.fun_body(body, body_span.clone());
+        let body = self.fun_body(ret_ty, body, body_span.clone());
 
         let fun = Function {
-            proto: fun.proto,
+            proto: (proto, proto_span),
             body: (body, body_span)
         };
 
         self.scope_add((hir::Stmt::Fun(Box::new(fun)), span));
     }
 
-    fn fun_body(&mut self, stmt: Stmt, span: Span) -> Body {
+    fn fun_body(&mut self, ret_ty: Ty, stmt: Stmt, span: Span) -> Body {
         self.scopes.enter();
         {
             match stmt {
                 Stmt::Block(stmts) => self.multiple_stmt(stmts),
-                Stmt::Expression(_) => self.stmt((stmt, span)),
+                Stmt::Expression(expr) => self.ret(Some(expr), span),
                 _ => unreachable!("Invalid function body")
+            }
+        }
+
+        // Implicit return;
+        if ret_ty == Ty::Void {
+            let add_ret = match self.scopes.current().last() {
+                Some((last, _)) => !last.is_ret(),
+                None => true
+            };
+
+            if add_ret {
+                self.scope_add((hir::Stmt::Ret(None), Span::default()));
             }
         }
         self.scopes.leave()
@@ -156,7 +178,6 @@ impl<'a> Desugarer<'a> {
     fn br(&mut self, expr: Option<Expr>, span: Span) {
         // Block expression
         if let Some(expr) = expr {
-            let (id, name) = self.cur_tmp_var().clone();
             let value = self.expr(expr);
             self.tmp_var_store(value);
         }
@@ -172,7 +193,7 @@ impl<'a> Desugarer<'a> {
     fn var_decl(&mut self, id: Id, ty: Option<Ty>, value: Expr, span: Span) {
         let name = self.mangled_name(id);
         let value = Some(self.expr(value));
-        let decl = hir::Stmt::DeclVar { id, name, value };
+        let decl = hir::Stmt::DeclVar { id, name, ty, value };
         self.scope_add((decl, span))
     }
 
@@ -185,13 +206,17 @@ impl<'a> Desugarer<'a> {
 
     fn annotation(&mut self, data: Spanned<Annotation>, stmt: Spanned<Stmt>, _span: Span) {
         if data.0.is_builtin() {
+            let prev = self.mangle_names;
+            self.mangle_names = false;
             self.stmt(stmt);
+            self.mangle_names = prev;
         } else {
             unimplemented!()
         }
     }
 
-    fn proto(&mut self, proto: ProtoFunction, span: Span) {
+    fn proto(&mut self, mut proto: ProtoFunction, span: Span) {
+        proto.name = self.mangled_name(proto.id);
         self.scope_add((hir::Stmt::Proto(proto), span));
     }
 
@@ -242,8 +267,11 @@ impl<'a> Desugarer<'a> {
         self.scope_add((hir::Stmt::Block(stmts), span));
     }
     
-    fn mangled_name(&self, id: Id) -> String {
-        let local = self.ctx.get_local(id);
+    fn mangled_name(&mut self, id: Id) -> String {
+        let local = self.ctx.get_local_mut(id);
+        if !self.mangle_names {
+            local.mangle_name = local.name.clone();
+        }
         local.mangle_name.clone().unwrap()
     }
 
@@ -259,7 +287,8 @@ impl<'a> Desugarer<'a> {
         let decl = hir::Stmt::DeclVar { 
             id,
             name: name.clone(),
-            value: None
+            ty: None,
+            value: None,
         };
 
         self.scope_add((decl, Span::default()));

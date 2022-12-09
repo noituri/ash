@@ -6,7 +6,6 @@ use ash_bytecode::prelude::Chunk;
 
 use crate::core::{AshResult, Context, Source, StringError};
 use crate::hir::Desugarer;
-use crate::ir::IR;
 use crate::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::resolver::Resolver;
