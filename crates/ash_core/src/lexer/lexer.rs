@@ -22,23 +22,16 @@ impl<'a> Lexer<'a> {
                     .map(move |tts| TokenTree::Tree(delim_t.clone(), tts))
             };
 
-            let newline = text::newline().to(Token::NewLine);
-
             keyword_lexer()
                 .or(string_lexer())
                 .or(numeric_lexer())
                 .or(basic_lexer())
-                .or(newline)
-                .padded_by(
-                    filter(|c: &char| c.is_inline_whitespace())
-                        .ignored()
-                        .repeated(),
-                )
                 .map(TokenTree::Token)
                 .or(delim_tree('(', ')', Delim::Paren))
                 .or(delim_tree('{', '}', Delim::Brace))
                 .or(delim_tree('[', ']', Delim::Bracket))
                 .map_with_span(|tt, span| (tt, span))
+                .padded()
         });
 
         let parser = tt.repeated().then_ignore(end());

@@ -7,6 +7,6 @@ pub(super) fn string_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         .ignore_then(filter(|c| *c != '"').repeated())
         .then_ignore(just('"'))
         .collect::<String>()
-        .map(Token::String)
-        .labelled("String")
+        .map(Token::Str)
+        .labelled("str")
 }

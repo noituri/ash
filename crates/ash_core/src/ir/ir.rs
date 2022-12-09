@@ -1,17 +1,14 @@
 use std::collections::{HashSet, VecDeque};
 
-use ash_bytecode::prelude::Chunk;
-
 use crate::{
     core::{next_id, Context, Id, Spanned},
     parser::{common::calc_block_span, conditional::IfInner, If},
     prelude::Span,
-    ty::{self, function::Function, Ty, Value}, ir::cash,
+    ty::{self, function::Function, Ty, Value}, ir::mir,
 };
 
 use crate::ir;
 
-use super::bytecode::Compiler;
 
 struct DesugaredAst<T> {
     returns: Option<T>,
@@ -67,12 +64,10 @@ impl<'a> IR<'a> {
         Self { context }
     }
 
-    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
+    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<u8> {
         let ast = self.sort_root(ast);
         let ast = self.desugar_statements(ast);
-        cash::Compiler::new().run(ast.clone());
-        let compiler = Compiler::new(self.context);
-        compiler.run(ast)
+        mir::Compiler::new().run(ast.clone())
     }
 
     // TODO: Figure out better way of doing this
@@ -176,7 +171,11 @@ impl<'a> IR<'a> {
                 value,
             } => {
                 self.mangle_var_expr_name(id, &mut name.0);
-                let ty = self.context.var_type_at(id).unwrap();
+                let ty = self.context
+                    .var_data(id)
+                    .unwrap()
+                    .ty
+                    .unwrap();
                 let expr = self.desugar_expr(value);
                 let value = expr
                     .returns
@@ -315,7 +314,7 @@ impl<'a> IR<'a> {
     fn init_new_var(&mut self, statements: &mut Vec<Spanned<ir::Stmt>>, ty: Ty) -> (Id, String) {
         let id = next_id();
         let mut name = "_tmp_".to_owned();
-        self.context.new_var(id, name.clone(), ty.clone());
+        self.context.new_var(id, name.clone(), Some(ty.clone()));
         self.mangle_var_decl_name(id, &mut name);
         let tmp_var = ir::Stmt::VariableDecl {
             id,
@@ -331,7 +330,7 @@ impl<'a> IR<'a> {
     fn new_var_read(&mut self, name: String, ty: Ty, points_to: Id) -> ir::Expr {
         let read_id = next_id();
         let read = ir::Expr::Variable(read_id, name, ty.clone());
-        self.context.resolve(read_id, 0, Some(ty), points_to);
+        self.context.resolve(read_id, true, Some(ty), points_to);
         read
     }
 
@@ -339,7 +338,7 @@ impl<'a> IR<'a> {
         let id = next_id();
         let name = (name, Span::default());
         let assign = ir::Stmt::VariableAssign { id, name, value };
-        self.context.resolve(id, 0, Some(ty), points_to);
+        self.context.resolve(id, true, Some(ty), points_to);
         assign
     }
 

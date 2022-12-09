@@ -23,11 +23,11 @@ impl Default for Ty {
 impl From<String> for Ty {
     fn from(s: String) -> Self {
         match s.as_str() {
-            "String" => Self::String,
-            "Bool" => Self::Bool,
-            "I32" => Self::I32,
-            "F64" => Self::F64,
-            "Void" => Self::F64,
+            "str" => Self::String,
+            "bool" => Self::Bool,
+            "i32" => Self::I32,
+            "f64" => Self::F64,
+            "void" => Self::F64,
             _ => todo!("Implement custom types"),
         }
     }
@@ -36,11 +36,11 @@ impl From<String> for Ty {
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ty = match self {
-            Self::Bool => "Bool".to_owned(),
-            Self::F64 => "F64".to_owned(),
-            Self::I32 => "I32".to_owned(),
-            Self::String => "String".to_owned(),
-            Self::Void => "Void".to_string(),
+            Self::Bool => "bool".to_owned(),
+            Self::F64 => "f64".to_owned(),
+            Self::I32 => "i32".to_owned(),
+            Self::String => "str".to_owned(),
+            Self::Void => "void".to_string(),
             Self::Fun(params, ty) => {
                 format!("fun({:?}): {}", params, ty)
             }

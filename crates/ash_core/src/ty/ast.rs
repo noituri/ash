@@ -6,11 +6,7 @@ use crate::{
     },
 };
 
-use super::{
-    function::{Function, ProtoFunction},
-    ty::Ty,
-    TypeSystem, Value,
-};
+use super::{function::{Function, ProtoFunction}, ty::Ty, Value};
 
 #[derive(Debug, Clone)]
 pub(crate) enum Stmt {
@@ -34,18 +30,18 @@ pub(crate) enum Stmt {
 }
 
 impl Stmt {
-    pub(crate) fn ty(&mut self, ts: &mut TypeSystem) -> Ty {
-        match self {
-            Self::Annotation(_, stmt) => stmt.0.ty(ts),
-            Self::ProtoFunction(proto) => proto.ty.clone(),
-            Self::Function(fun) => fun.proto.0.ty.clone(),
-            Self::VariableDecl { ty, .. } => ty.clone(),
-            Self::VariableAssign { value, .. } => value.ty(ts),
-            Self::Return(_, ty) => ty.clone(),
-            Self::Expression(_, ty) => ty.clone(),
-            Self::While(_, _) => Ty::Void,
-        }
-    }
+    // pub(crate) fn ty(&mut self, ts: &mut TypeSystem) -> Ty {
+    //     match self {
+    //         Self::Annotation(_, stmt) => stmt.0.ty(ts),
+    //         Self::ProtoFunction(proto) => proto.ty.clone(),
+    //         Self::Function(fun) => fun.proto.0.ty.clone(),
+    //         Self::VariableDecl { ty, .. } => ty.clone(),
+    //         Self::VariableAssign { value, .. } => value.ty(ts),
+    //         Self::Return(_, ty) => ty.clone(),
+    //         Self::Expression(_, ty) => ty.clone(),
+    //         Self::While(_, _) => Ty::Void,
+    //     }
+    // }
 
     pub fn to_expr(self) -> Expr {
         match self {
@@ -80,31 +76,31 @@ pub(crate) enum Expr {
 }
 
 impl Expr {
-    pub(crate) fn ty(&mut self, ts: &mut TypeSystem) -> Ty {
-        let ty = match self {
-            Self::Variable(_, _, ty) => ty.clone(),
-            Self::Literal(value) => value.ty(),
-            Self::Call { ty, .. } => ty.clone(),
-            Self::Block(_, ty) => ty.clone(),
-            Self::If(_, ty) => ty.clone(),
-            Self::Unary { ty, .. } => ty.clone(),
-            Self::Binary { ty, .. } => ty.clone(),
-        };
+    // pub(crate) fn ty(&mut self, ts: &mut TypeSystem) -> Ty {
+    //     let ty = match self {
+    //         Self::Variable(_, _, ty) => ty.clone(),
+    //         Self::Literal(value) => value.ty(),
+    //         Self::Call { ty, .. } => ty.clone(),
+    //         Self::Block(_, ty) => ty.clone(),
+    //         Self::If(_, ty) => ty.clone(),
+    //         Self::Unary { ty, .. } => ty.clone(),
+    //         Self::Binary { ty, .. } => ty.clone(),
+    //     };
 
-        if let Ty::DeferTyCheck(mut types, span) = ty {
-            let first_ty = types.remove(0);
-            for ty in types {
-                if !ts.check_type(first_ty.clone(), ty, span.clone()) {
-                    break;
-                }
-            }
+    //     if let Ty::DeferTyCheck(mut types, span) = ty {
+    //         let first_ty = types.remove(0);
+    //         for ty in types {
+    //             if !ts.check_type(first_ty.clone(), ty, span.clone()) {
+    //                 break;
+    //             }
+    //         }
 
-            self.update_ty(first_ty.clone());
-            first_ty
-        } else {
-            ty
-        }
-    }
+    //         self.update_ty(first_ty.clone());
+    //         first_ty
+    //     } else {
+    //         ty
+    //     }
+    // }
 
     fn update_ty(&mut self, new_ty: Ty) {
         match self {

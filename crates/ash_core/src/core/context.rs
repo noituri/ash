@@ -19,13 +19,14 @@ pub(crate) struct VarNode {
     pub deps: Vec<Id>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Local {
     pub id: Id,
     pub name: Option<String>,
+    pub mangle_name: Option<String>,
     pub ty: Option<Ty>,
     pub points_to: Option<Id>,
-    pub depth: usize, // TODO: Remove later?
+    pub mutable: bool,
 }
 
 impl Context {
@@ -81,28 +82,29 @@ impl Context {
         self.locals.get_mut(&id).unwrap()
     }
 
-    pub(crate) fn var_type_at(&self, id: Id) -> Option<Ty> {
+    pub(crate) fn var_data(&self, id: Id) -> Option<Local> {
         let local = self.locals.get(&id)?;
         if local.ty.is_none() {
             let points_to = local.points_to?;
             if id != points_to {
-                return self.var_type_at(points_to);
+                return self.var_data(points_to);
             } else {
                 unreachable!()
             }
         }
 
-        local.ty.clone()
+        Some(local.clone())
     }
 
-    pub(crate) fn new_var(&mut self, id: Id, name: String, ty: Ty) {
+    pub(crate) fn new_var(&mut self, id: Id, name: String, ty: Option<Ty>) {
         self.locals.insert(
             id,
             Local {
                 id,
-                name: Some(name),
-                ty: Some(ty),
-                depth: 0,
+                name: Some(name.clone()),
+                mangle_name: Some(format!("__{name}{id}")),
+                ty,
+                mutable: true,
                 points_to: None,
             },
         );
@@ -141,24 +143,26 @@ impl Context {
             id,
             Local {
                 id,
-                name: Some(name),
+                name: Some(name.clone()),
+                mangle_name: Some(format!("__{name}{id}")),
                 ty: None,
-                depth: 0,
                 points_to: None,
+                mutable: true,
             },
         );
     }
 
     // TODO: storing depth might not be needed at this stage
     // Since IR desugars most blocks the depth may be invalid
-    pub(crate) fn resolve(&mut self, id: Id, depth: usize, ty: Option<Ty>, points_to: Id) {
+    pub(crate) fn resolve(&mut self, id: Id, mutable: bool, ty: Option<Ty>, points_to: Id) {
         self.locals.insert(
             id,
             Local {
                 id,
-                depth,
                 ty,
                 name: None,
+                mangle_name: None,
+                mutable,
                 points_to: Some(points_to),
             },
         );

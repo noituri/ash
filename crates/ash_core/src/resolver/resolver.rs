@@ -15,6 +15,7 @@ pub(crate) type Scope = HashMap<String, VarData>;
 pub(crate) struct VarData {
     id: Id,
     is_defined: bool,
+    is_mutable: bool,
     ty: Option<Ty>,
 }
 
@@ -22,6 +23,7 @@ pub(crate) struct Resolver<'a> {
     context: &'a mut Context,
     scopes: Vec<Scope>,
     current_function: Option<FunctionType>,
+    is_expr_block: bool,
     errors: Vec<Simple<String>>,
     deps: Option<(Id, String, Vec<Id>)>,
 }
@@ -32,6 +34,7 @@ impl<'a> Resolver<'a> {
             context,
             scopes: vec![Scope::new()],
             current_function: None,
+            is_expr_block: false,
             errors: Vec::new(),
             deps: None,
         }
@@ -67,12 +70,12 @@ impl<'a> Resolver<'a> {
                 self.resolve_root_stmt(stmt);
             }
             Stmt::ProtoFunction(proto) => {
-                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.declare(proto.name.clone(), proto.id, false, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
             Stmt::Function(fun) => {
                 let (proto, _) = &fun.proto;
-                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.declare(proto.name.clone(), proto.id, false, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
             Stmt::VariableDecl {
@@ -80,8 +83,9 @@ impl<'a> Resolver<'a> {
                 name,
                 ty,
                 value: _,
+                mutable,
             } => {
-                self.declare(name.clone(), *id, ty.clone());
+                self.declare(name.clone(), *id, *mutable, ty.clone());
                 self.define(name.clone());
             }
             _ => self.new_error(
@@ -111,11 +115,12 @@ impl<'a> Resolver<'a> {
                 name,
                 value,
                 ty,
+                mutable,
             } => {
                 let prev_deps = self.deps.clone();
                 self.deps = Some((*id, name.clone(), Vec::new()));
 
-                self.declare(name.clone(), *id, ty.clone());
+                self.declare(name.clone(), *id, *mutable, ty.clone());
                 self.resolve_expr(value, span);
                 self.define(name.clone());
 
@@ -136,16 +141,15 @@ impl<'a> Resolver<'a> {
                         span.clone(),
                     );
                 }
-                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.declare(proto.name.clone(), proto.id, false, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
             }
             Stmt::Function(fun) => {
                 let (proto, _) = &fun.proto;
-                self.declare(proto.name.clone(), proto.id, Some(proto.ty.clone()));
+                self.declare(proto.name.clone(), proto.id, false, Some(proto.ty.clone()));
                 self.define(proto.name.clone());
                 let prev = self.current_function;
                 self.current_function = Some(FunctionType::Function);
-
                 {
                     self.enter_scope();
 
@@ -156,7 +160,7 @@ impl<'a> Resolver<'a> {
                         );
                     }
                     for (id, param, ty) in proto.params.iter() {
-                        self.declare(param.clone(), *id, Some(ty.clone()));
+                        self.declare(param.clone(), *id, false, Some(ty.clone()));
                         self.define(param.clone());
                     }
                     self.resolve_stmt(&fun.body);
@@ -175,6 +179,35 @@ impl<'a> Resolver<'a> {
                 }
                 if let Some(expr) = expr {
                     self.resolve_expr(expr, span);
+                }
+            }
+            Stmt::Block(stmts) => self.block(stmts, false),
+            Stmt::If(If {
+                then,
+                else_ifs,
+                otherwise,
+            }) => {
+                let (cond, cond_span) = &then.condition;
+                self.resolve_expr(cond, cond_span);
+                self.block(&then.body, false);
+
+                for else_if in else_ifs {
+                    let (cond, cond_span) = &else_if.condition;
+                    self.resolve_expr(cond, cond_span);
+                    self.block(&else_if.body, false)
+                }
+
+                self.block(&otherwise, false);
+            }
+            Stmt::Break(expr) => {
+                if !self.is_expr_block {
+                    self.new_error("break can not be used outside of expression block or loop", span.clone())
+                }
+                
+                match expr {
+                    Some(expr) => self.resolve_expr(expr, span),
+                    None if self.is_expr_block => self.new_error("break inside a block expression needs to pass a value", span.clone()),
+                    None => {}
                 }
             }
             _ => {}
@@ -207,7 +240,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             Expr::Group(expr) => self.resolve_expr(expr, span),
-            Expr::Block(stmts) => self.block(stmts),
+            Expr::Block(stmts) => self.block(stmts, true),
             Expr::If(If {
                 then,
                 else_ifs,
@@ -215,25 +248,25 @@ impl<'a> Resolver<'a> {
             }) => {
                 let (cond, cond_span) = &then.condition;
                 self.resolve_expr(cond, cond_span);
-                self.resolve_statements(&then.body);
+                self.block(&then.body, true);
 
                 for else_if in else_ifs {
                     let (cond, cond_span) = &else_if.condition;
                     self.resolve_expr(cond, cond_span);
-                    self.resolve_statements(&then.body);
+                    self.block(&else_if.body, true)
                 }
 
-                self.resolve_statements(otherwise);
+                self.block(&otherwise, true);
             }
             _ => {}
         }
     }
 
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
-        for (depth, scope) in self.scopes.iter_mut().enumerate() {
+        for scope in self.scopes.iter_mut() {
             if let Some(data) = scope.get(name) {
                 let points_to = data.id;
-                self.context.resolve(id, depth, data.ty.clone(), points_to);
+                self.context.resolve(id, data.is_mutable, data.ty.clone(), points_to);
                 self.detect_deps(points_to, span.clone());
                 return;
             }
@@ -242,19 +275,29 @@ impl<'a> Resolver<'a> {
         self.new_error("Variable does not exist", span);
     }
 
-    fn block(&mut self, statements: &'a [Spanned<Stmt>]) {
+    fn block(&mut self, statements: &'a [Spanned<Stmt>], is_expr: bool) {
+        let prev = self.is_expr_block;
+        if is_expr {
+            self.is_expr_block = true;
+        }
+        
         self.enter_scope();
         self.resolve_statements(statements);
         self.leave_scope();
+        
+        if is_expr {
+            self.is_expr_block = prev;
+        }
     }
 
-    fn declare(&mut self, name: String, id: Id, ty: Option<Ty>) {
+    fn declare(&mut self, name: String, id: Id, is_mutable: bool, ty: Option<Ty>) {
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(
                 name,
                 VarData {
                     id,
                     ty,
+                    is_mutable,
                     is_defined: false,
                 },
             );

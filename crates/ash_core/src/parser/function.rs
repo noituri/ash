@@ -5,7 +5,8 @@ use crate::ty::Ty;
 use crate::{core::next_id, lexer::token::Token};
 use chumsky::prelude::*;
 
-use super::common::type_parser;
+use super::common::{type_parser, stmt_block_parser};
+use super::expression_parser;
 use super::{
     common::{ident_parser, ident_with_suffix_parser},
     expr::{Expr, ExprRecursive},
@@ -24,17 +25,15 @@ pub(super) fn function_proto_parser() -> impl Parser<Token, Spanned<Stmt>, Error
         .allow_trailing()
         .delimited_by(just(Token::LParen), just(Token::RParen))
         .labelled("function args");
-    let return_type = just(Token::Colon)
+    let return_type = just(Token::Gt)
         .ignore_then(type_parser())
         .labelled("function return type");
 
     just(Token::Function)
         .ignore_then(name)
-        .then(params.or_not())
+        .then(params)
         .then(return_type.or_not())
-        .then_ignore(just(Token::NewLine).or_not())
         .map_with_span(|((name, params), ty), span| {
-            let params = params.unwrap_or_default();
             let ty = {
                 let param_types = params.iter().map(|p| p.1.clone()).collect::<Vec<_>>();
                 let ty = ty.unwrap_or_default();
@@ -60,10 +59,12 @@ pub(super) fn function_proto_parser() -> impl Parser<Token, Spanned<Stmt>, Error
 pub(super) fn function_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
-    let body = just(Token::Equal)
-        .ignore_then(stmt_expression_parser(stmt))
-        .then_ignore(just(Token::NewLine))
-        .map_with_span(|expr, span| (Stmt::Expression(expr), span));
+    let body = just(Token::Arrow)
+        .ignore_then(expression_parser())
+        .then_ignore(just(Token::SemiColon))
+        .map_with_span(|expr, span| (Stmt::Expression(expr), span))
+        .or(stmt_block_parser(stmt))
+        .map_with_span(|stmt, span| (stmt.0, span));
 
     function_proto_parser()
         .then(body)
@@ -87,20 +88,7 @@ pub(super) fn call_parser<'a>(
         .separated_by(just(Token::Comma))
         .delimited_by(just(Token::LParen), just(Token::RParen))
         .repeated();
-    let call = callee.then(args).foldl(|callee, args| Expr::Call {
-        args,
-        callee: Box::new(callee),
-    });
-
-    call_no_parens_parser(expr).or(call)
-}
-
-pub(super) fn call_no_parens_parser<'a>(
-    expr: ExprRecursive<'a>,
-) -> impl Parser<Token, Expr, Error = Simple<Token>> + Clone + 'a {
-    let callee = ident_with_suffix_parser().map(|name| Expr::Variable(next_id(), name));
-    let args = expr.clone().separated_by(just(Token::Comma)).at_least(1);
-    callee.then(args).map(|(callee, args)| Expr::Call {
+    callee.then(args).foldl(|callee, args| Expr::Call {
         args,
         callee: Box::new(callee),
     })
@@ -109,11 +97,11 @@ pub(super) fn call_no_parens_parser<'a>(
 pub(super) fn return_parser<'a>(
     stmt: StmtRecursive<'a>,
 ) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
-    just(Token::Return)
+    just(Token::Ret)
         .ignore_then(
             stmt_expression_parser(stmt)
                 .or_not()
-                .then_ignore(just(Token::NewLine)),
+                .then_ignore(just(Token::SemiColon))
         )
         .map_with_span(|expr, span| (Stmt::Return(expr), span))
 }

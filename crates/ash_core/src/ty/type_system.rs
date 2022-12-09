@@ -69,7 +69,7 @@ impl<'a> TypeSystem<'a> {
         let stmt = match stmt {
             parser::Stmt::ProtoFunction(proto) => {
                 self.context
-                    .new_var(proto.id, proto.name.clone(), proto.ty.clone());
+                    .new_var(proto.id, proto.name.clone(), Some(proto.ty.clone()));
                 ty::Stmt::ProtoFunction(proto)
             }
             parser::Stmt::Function(fun) => {
@@ -92,9 +92,9 @@ impl<'a> TypeSystem<'a> {
                 }
 
                 self.context
-                    .new_var(proto.id, proto.name.clone(), ty.clone());
+                    .new_var(proto.id, proto.name.clone(), Some(ty.clone()));
                 for (id, name, ty) in proto.params.iter() {
-                    self.context.new_var(*id, name.clone(), ty.clone());
+                    self.context.new_var(*id, name.clone(), Some(ty.clone()));
                 }
 
                 let fun = Function {
@@ -111,6 +111,7 @@ impl<'a> TypeSystem<'a> {
                 name,
                 ty,
                 value,
+                mutable: _,
             } => {
                 let mut value = self.type_expr(value, span.clone(), false);
                 let ty = match ty {
@@ -127,7 +128,7 @@ impl<'a> TypeSystem<'a> {
                 }
 
                 // TODO: types might need to be pre evaluated first
-                self.context.new_var(id, name.clone(), ty.clone());
+                self.context.new_var(id, name.clone(), Some(ty.clone()));
                 ty::Stmt::VariableDecl {
                     id,
                     name,
@@ -136,7 +137,12 @@ impl<'a> TypeSystem<'a> {
                 }
             }
             parser::Stmt::VariableAssign { id, name, value } => {
-                let ty = self.context.var_type_at(id).unwrap();
+                let var_data = self.context.var_data(id).unwrap();
+                if !var_data.mutable {
+                    self.new_error("Can not assign to immutable val", span.clone());
+                }
+
+                let ty = var_data.ty.unwrap();
                 let mut value = self.type_expr(value, span.clone(), false);
                 let value_ty = value.ty(self);
                 self.check_type(ty, value_ty, span.clone());
@@ -187,13 +193,14 @@ impl<'a> TypeSystem<'a> {
     fn type_expr(&mut self, expr: parser::Expr, span: Span, expr_statement: bool) -> ty::Expr {
         match expr {
             parser::Expr::Variable(id, name) => {
-                let ty = match self.context.var_type_at(id) {
+                let ty = self.context.var_data(id).and_then(|data| data.ty);
+                let ty = match ty {
                     Some(ty) => ty,
                     None => {
                         let node = self.context.get_pointer_var_node(id).clone();
                         let mut value = self.type_expr(node.value, Span::default(), expr_statement);
                         let ty = value.ty(self);
-                        self.context.new_var(node.id, node.name, ty.clone());
+                        self.context.new_var(node.id, node.name, Some(ty.clone()));
                         ty
                     }
                 };

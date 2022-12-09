@@ -10,12 +10,8 @@ pub fn run(options: RunOptions) -> Result<()> {
     }
     if options.path.is_file() {
         let src = ash::Source::from_file(options.path)?;
-        match ash::build(&src) {
-            Ok(chunk) => {
-                let mut vm = VM::new(&chunk);
-                vm.run()?;
-            }
-            Err(errs) => errs.into_iter().for_each(|err| report::error(&src, err)),
+        if let Err(errs) = ash::build(&src) {
+            errs.into_iter().for_each(|err| report::error(&src, err));
         }
     } else {
         unimplemented!();

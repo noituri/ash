@@ -1,12 +1,13 @@
 @[builtin]
-fun printf(format: String, d: I32)
+fun printf(format: str, d: i32)
 
-fun sum(a: I32, b: I32): I32 = a + b
+fun sum(a: i32, b: i32) > i32 => a + b;
 
-fun writeln(msg: String) = {
-    printf(msg, 0)
+fun writeln(msg: str) {
+    printf(msg, 0);
 }
 
-fun main = {
-    printf("%d", sum(1, 3))
+fun main() {
+    writeln("Hello World!");
+    printf("%d", sum(1, 3));
 }

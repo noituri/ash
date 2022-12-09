@@ -1,18 +1,18 @@
-fun main = {
-    let a = if (133 == 1) {
-        3
+fun main() {
+    val a = if (133 == 1) {
+        break 3;
     } else if true {
-        5
+        break 5;
     } else if false {
         if false {
-            1 + 1
+            break 1 + 1;
         }
-        if 123 == 122+1 {
-            4
+        break if 123 == 122+1 {
+            break 4;
         } else {
-            1
-        }
+            break 1;
+        };
     } else {
-        4
-    } 
+        break 4;
+    };
 }

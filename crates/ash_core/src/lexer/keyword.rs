@@ -8,9 +8,11 @@ pub(super) fn keyword_lexer() -> impl Parser<char, Token, Error = Simple<char>> 
         .map(|(ident, space): (String, Vec<_>)| match ident.as_str() {
             "true" => Token::Bool(true),
             "false" => Token::Bool(false),
-            "return" => Token::Return,
+            "return" => Token::Ret,
+            "break" => Token::Break,
             "fun" => Token::Function,
-            "let" => Token::Let,
+            "val" => Token::Val,
+            "var" => Token::Var,
             "if" => Token::If,
             "else" => Token::Else,
             "while" => Token::While,

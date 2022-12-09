@@ -1,6 +1,6 @@
 use crate::{core::Spanned, lexer::token::Token};
 
-use super::{common::block_parser, expression_parser, Stmt, StmtRecursive};
+use super::{expression_parser, Stmt, StmtRecursive, common::stmt_block_parser};
 use chumsky::prelude::*;
 
 pub(super) fn while_parser<'a>(
@@ -8,6 +8,6 @@ pub(super) fn while_parser<'a>(
 ) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
     just(Token::While)
         .ignore_then(expression_parser().map_with_span(|e, s| (e, s)))
-        .then(block_parser(stmt))
-        .map_with_span(|(cond, body), span| (Stmt::While(cond, body.block_data()), span))
+        .then(stmt_block_parser(stmt))
+        .map_with_span(|(cond, body), span| (Stmt::While(cond, body.0.block_data()), span))
 }

@@ -92,15 +92,9 @@ impl Compiler {
         }
     }
 
-    pub fn run(mut self, ast: Vec<Spanned<Stmt>>) {
+    pub fn run(mut self, ast: Vec<Spanned<Stmt>>) -> Vec<u8> {
         self.compile_statements(ast);
-        self.create_file();
-    }
-
-    fn create_file(&self) {
-        let bytes = bincode::serialize(&self.header).unwrap();
-        let mut f = File::create("test.cash").unwrap();
-        f.write_all(&bytes).unwrap();
+        bincode::serialize(&self.header).unwrap()
     }
 
     fn compile_statements(&mut self, statements: Vec<Spanned<Stmt>>) {
