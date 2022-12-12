@@ -13,6 +13,8 @@ fun main() {
             break 1;
         };
     } else {
-        break 4;
+        break {
+            break 1;
+        };
     };
 }

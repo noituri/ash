@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
+use ariadne::{Color, Fmt, Label, Report, ReportKind, Source, Config};
 
 use ash_core::prelude::{Simple, SimpleReason, Source as SvSource};
 
@@ -68,7 +68,11 @@ where
         ),
     };
 
+    let config = Config::default()
+        .with_compact(true);
+
     report
+        .with_config(config)
         .finish()
         .eprint((location, Source::from(source.inner())))
         .unwrap();

@@ -9,7 +9,11 @@ use crate::{
     ty::{function::{MAX_FUNCTION_PARAMS, ProtoFunction}, FunctionType, Ty},
 };
 
-pub(crate) type Scope = HashMap<String, VarData>;
+#[derive(Default)]
+pub(crate) struct Scope {
+    vars: HashMap<String, VarData>,
+    early_exit: bool
+}
 
 #[derive(Debug)]
 pub(crate) struct VarData {
@@ -32,7 +36,7 @@ impl<'a> Resolver<'a> {
     pub fn new(context: &'a mut Context) -> Self {
         Self {
             context,
-            scopes: vec![Scope::new()],
+            scopes: vec![Scope::default()],
             current_function: None,
             is_expr_block: false,
             errors: Vec::new(),
@@ -51,11 +55,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn enter_scope(&mut self) {
-        self.scopes.push(Scope::new());
+        self.scopes.push(Scope::default());
     }
 
     fn leave_scope(&mut self) {
-        self.scopes.pop();
+        self.scopes.pop().unwrap();
     }
 
     fn resolve_root(&mut self, statements: &'a [Spanned<Stmt>]) {
@@ -185,7 +189,9 @@ impl<'a> Resolver<'a> {
                     self.resolve_expr(expr, span);
                 }
             }
-            Stmt::Block(stmts) => self.block(stmts, false),
+            Stmt::Block(stmts) => {
+                self.block(stmts, false);
+            },
             Stmt::If(If {
                 then,
                 else_ifs,
@@ -198,7 +204,7 @@ impl<'a> Resolver<'a> {
                 for else_if in else_ifs {
                     let (cond, cond_span) = &else_if.condition;
                     self.resolve_expr(cond, cond_span);
-                    self.block(&else_if.body, false)
+                    self.block(&else_if.body, false);
                 }
 
                 self.block(&otherwise, false);
@@ -207,28 +213,21 @@ impl<'a> Resolver<'a> {
                 if !self.is_expr_block {
                     self.new_error("break can not be used outside of expression block or loop", span.clone())
                 }
-                
+            
+                self.mark_scope_exhaustive();
+
                 match expr {
                     Some(expr) => self.resolve_expr(expr, span),
                     None if self.is_expr_block => self.new_error("break inside a block expression needs to pass a value", span.clone()),
                     None => {}
                 }
             }
-            _ => {}
         }
     }
 
     fn resolve_expr(&mut self, expr: &'a Expr, span: &'a Span) {
         match expr {
             Expr::Variable(id, name) => {
-                // let v = self.scopes.last().unwrap().get(name).map(|v| v.is_defined);
-                // if v == Some(false) {
-                //     self.new_error(
-                //         "Use of variable in its own initializer is forbidden",
-                //         span.clone(),
-                //     );
-                // }
-
                 self.resolve_local(*id, name, span.clone())
             }
             Expr::Binary { left, right, .. } => {
@@ -244,7 +243,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             Expr::Group(expr) => self.resolve_expr(expr, span),
-            Expr::Block(stmts) => self.block(stmts, true),
+            Expr::Block(stmts) => {
+                let exhaustive = self.block(stmts, true);
+                if exhaustive {
+                    self.mark_scope_exhaustive();
+                } else {
+                    self.new_error("Block expression not exhaustive", span.clone())
+                }
+            },
             Expr::If(If {
                 then,
                 else_ifs,
@@ -252,23 +258,31 @@ impl<'a> Resolver<'a> {
             }) => {
                 let (cond, cond_span) = &then.condition;
                 self.resolve_expr(cond, cond_span);
-                self.block(&then.body, true);
+                let mut if_exhaustive = self.block(&then.body, true);
 
                 for else_if in else_ifs {
                     let (cond, cond_span) = &else_if.condition;
                     self.resolve_expr(cond, cond_span);
-                    self.block(&else_if.body, true)
+                    let else_if_exhaustive = self.block(&else_if.body, true);
+                    if if_exhaustive {
+                        if_exhaustive = else_if_exhaustive;
+                    }
                 }
 
-                self.block(&otherwise, true);
+                let else_exhaustive = self.block(&otherwise, true);
+                if if_exhaustive && else_exhaustive {
+                    self.mark_scope_exhaustive();
+                } else {
+                    self.new_error("If expression not exhaustive", span.clone())
+                }
             }
             _ => {}
         }
     }
 
     fn resolve_local(&mut self, id: Id, name: &'a str, span: Span) {
-        for scope in self.scopes.iter_mut().rev() {
-            if let Some(data) = scope.get(name) {
+        for Scope { vars, .. } in self.scopes.iter_mut().rev() {
+            if let Some(data) = vars.get(name) {
                 let points_to = data.id;
                 if !data.is_defined {
                     continue;
@@ -283,7 +297,7 @@ impl<'a> Resolver<'a> {
     }
 
 
-    fn block(&mut self, statements: &'a [Spanned<Stmt>], is_expr: bool) {
+    fn block(&mut self, statements: &'a [Spanned<Stmt>], is_expr: bool) -> bool {
         let prev = self.is_expr_block;
         if is_expr {
             self.is_expr_block = true;
@@ -291,16 +305,19 @@ impl<'a> Resolver<'a> {
         
         self.enter_scope();
         self.resolve_statements(statements);
+        let exhaustive = self.has_scope_early_exit();
         self.leave_scope();
         
         if is_expr {
             self.is_expr_block = prev;
         }
+
+        exhaustive
     }
 
     fn declare(&mut self, name: String, id: Id, is_mutable: bool, ty: Option<Ty>) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(
+            scope.vars.insert(
                 name,
                 VarData {
                     id,
@@ -313,8 +330,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn define(&mut self, name: String) {
-        if let Some(scope) = self.scopes.last_mut() {
-            scope.get_mut(&name).unwrap().is_defined = true;
+        if let Some(Scope { vars, .. }) = self.scopes.last_mut() {
+            vars.get_mut(&name).unwrap().is_defined = true;
         }
     }
 
@@ -336,6 +353,14 @@ impl<'a> Resolver<'a> {
             }
             deps.2.push(checked_id);
         }
+    }
+
+    fn has_scope_early_exit(&self) -> bool {
+        self.scopes.last().unwrap().early_exit
+    }
+
+    fn mark_scope_exhaustive(&mut self) {
+        self.scopes.last_mut().unwrap().early_exit = true;
     }
 
     fn new_error<S: ToString>(&mut self, err_msg: S, span: Span) {
