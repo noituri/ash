@@ -26,7 +26,7 @@ pub(crate) enum Stmt {
     },
     While(Spanned<Expr>, Vec<Spanned<Stmt>>),
     Return(Option<Expr>, Ty),
-    Expression(Expr, Ty),
+    Expr(Expr, Ty),
 }
 
 impl Stmt {
@@ -45,7 +45,7 @@ impl Stmt {
 
     pub fn to_expr(self) -> Expr {
         match self {
-            Self::Expression(expr, _) => expr,
+            Self::Expr(expr, _) => expr,
             _ => panic!("Not an expression: {:?}", self),
         }
     }
@@ -53,7 +53,7 @@ impl Stmt {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Expr {
-    Variable(Id, String, Ty),
+    LoadVar(Id, String, Ty),
     Literal(Value),
     Call {
         callee: Box<Expr>,
@@ -61,7 +61,6 @@ pub(crate) enum Expr {
         ty: Ty,
     },
     Block(Vec<Spanned<Stmt>>, Ty),
-    If(If<Expr, Stmt>, Ty),
     Unary {
         op: UnaryOp,
         right: Box<Expr>,
@@ -76,41 +75,40 @@ pub(crate) enum Expr {
 }
 
 impl Expr {
-    // pub(crate) fn ty(&mut self, ts: &mut TypeSystem) -> Ty {
-    //     let ty = match self {
-    //         Self::Variable(_, _, ty) => ty.clone(),
-    //         Self::Literal(value) => value.ty(),
-    //         Self::Call { ty, .. } => ty.clone(),
-    //         Self::Block(_, ty) => ty.clone(),
-    //         Self::If(_, ty) => ty.clone(),
-    //         Self::Unary { ty, .. } => ty.clone(),
-    //         Self::Binary { ty, .. } => ty.clone(),
-    //     };
+    pub(crate) fn ty(&self) -> Ty {
+        match self {
+            Self::LoadVar(_, _, ty) => ty.clone(),
+            Self::Literal(value) => value.ty(),
+            Self::Call { ty, .. } => ty.clone(),
+            Self::Block(_, ty) => ty.clone(),
+            Self::Unary { ty, .. } => ty.clone(),
+            Self::Binary { ty, .. } => ty.clone(),
+        }
 
-    //     if let Ty::DeferTyCheck(mut types, span) = ty {
-    //         let first_ty = types.remove(0);
-    //         for ty in types {
-    //             if !ts.check_type(first_ty.clone(), ty, span.clone()) {
-    //                 break;
-    //             }
-    //         }
+        // if let Ty::DeferTyCheck(mut types, span) = ty {
+        //     let first_ty = types.remove(0);
+        //     for ty in types {
+        //         if !ts.check_type(first_ty.clone(), ty, span.clone()) {
+        //             break;
+        //         }
+        //     }
 
-    //         self.update_ty(first_ty.clone());
-    //         first_ty
-    //     } else {
-    //         ty
+        //     self.update_ty(first_ty.clone());
+        //     first_ty
+        // } else {
+        //     ty
+        // }
+    }
+
+    // fn update_ty(&mut self, new_ty: Ty) {
+    //     match self {
+    //         Self::Variable(_, _, ty) => *ty = new_ty,
+    //         Self::Call { ty, .. } => *ty = new_ty,
+    //         Self::Block(_, ty) => *ty = new_ty,
+    //         Self::If(_, ty) => *ty = new_ty,
+    //         Self::Unary { ty, .. } => *ty = new_ty,
+    //         Self::Binary { ty, .. } => *ty = new_ty,
+    //         Self::Literal(_) => {}
     //     }
     // }
-
-    fn update_ty(&mut self, new_ty: Ty) {
-        match self {
-            Self::Variable(_, _, ty) => *ty = new_ty,
-            Self::Call { ty, .. } => *ty = new_ty,
-            Self::Block(_, ty) => *ty = new_ty,
-            Self::If(_, ty) => *ty = new_ty,
-            Self::Unary { ty, .. } => *ty = new_ty,
-            Self::Binary { ty, .. } => *ty = new_ty,
-            Self::Literal(_) => {}
-        }
-    }
 }
