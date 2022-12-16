@@ -1,6 +1,6 @@
 use chumsky::prelude::Simple;
 
-use crate::{core::{Context, Spanned, Id}, hir::{Stmt, Expr}, prelude::{AshResult, Span}, parser::operator::UnaryOp};
+use crate::{core::{Context, Spanned, Id}, hir::{Stmt, Expr}, prelude::{AshResult, Span}, parser::operator::{UnaryOp, BinaryOp}};
 
 use super::{Value, Ty};
 
@@ -51,7 +51,7 @@ impl<'a> Typing<'a> {
             Expr::Literal(value) => self.literal(value),
             Expr::Call { callee, args } => todo!(),
             Expr::Unary { op, right } => self.unary(op, *right, span),
-            Expr::Binary { left, op, right } => todo!(),
+            Expr::Binary { left, op, right } => self.binary(*left, op, *right, span),
         }
     }
 
@@ -91,6 +91,71 @@ impl<'a> Typing<'a> {
             op,
             right,
             ty
+        }
+    }
+
+    fn binary(&mut self, left: Expr, op: BinaryOp, right: Expr, span: Span)  -> super::Expr {
+        let left = Box::new(self.expr(left, span.clone()));
+        let right = Box::new(self.expr(right, span.clone()));
+        let left_ty = left.ty();
+        let right_ty = right.ty();
+
+        self.expect_ty(&left_ty, &right_ty, span.clone());
+
+        let expected_types = match op {
+            BinaryOp::Sum => vec![
+                Ty::String,
+                Ty::I32,
+                Ty::F64
+            ],
+            BinaryOp::Sub |
+            BinaryOp::Mul |
+            BinaryOp::Div |
+            BinaryOp::Rem |
+            BinaryOp::Gte |
+            BinaryOp::Lte |
+            BinaryOp::Gt |
+            BinaryOp::Lt => vec![
+                Ty::I32,
+                Ty::F64
+            ],
+            BinaryOp::Equal | BinaryOp::NotEqual => vec![
+                Ty::String,
+                Ty::I32,
+                Ty::F64,
+                Ty::Bool
+            ],
+            BinaryOp::LogicAnd => todo!(),
+            BinaryOp::LogicOr => todo!(),
+        };
+
+        self.expect_one_of(&expected_types, &left_ty, span);
+        let ty = self.get_binary_ty(&op, left_ty);
+
+        super::Expr::Binary { 
+            left,
+            op,
+            right,
+            ty
+        }
+    }
+
+    fn get_binary_ty(&self, op: &BinaryOp, received_ty: Ty) -> Ty {
+        let bool_ops = [
+            BinaryOp::Equal,
+            BinaryOp::NotEqual,
+            BinaryOp::Gt,
+            BinaryOp::Lt,
+            BinaryOp::Gte,
+            BinaryOp::Lte,
+            BinaryOp::LogicAnd,
+            BinaryOp::LogicOr,   
+        ];
+
+        if bool_ops.contains(op) {
+            Ty::Bool
+        } else {
+            received_ty
         }
     }
 

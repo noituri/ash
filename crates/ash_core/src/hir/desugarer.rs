@@ -179,7 +179,7 @@ impl<'a> Desugarer<'a> {
         // Block expression
         if let Some(expr) = expr {
             let value = self.expr(expr);
-            self.tmp_var_store(value);
+            self.tmp_var_store(value, span.clone());
         }
         self.scope_add((hir::Stmt::Break, span))
     }
@@ -295,9 +295,9 @@ impl<'a> Desugarer<'a> {
         self.tmp_vars.push((id, name));
     }
 
-    fn tmp_var_store(&mut self, value: hir::Expr) {
+    fn tmp_var_store(&mut self, value: hir::Expr, span: Span) {
         let (id, name) = self.cur_tmp_var().clone();
-        let name = (name, Span::default());
+        let name = (name, span);
         self.scope_add((hir::Stmt::StoreVar { id, name, value }, Span::default()));
     }
 
