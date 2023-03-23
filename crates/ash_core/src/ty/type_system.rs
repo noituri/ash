@@ -111,6 +111,7 @@ impl<'a> TypeSystem<'a> {
                 name,
                 ty,
                 value,
+                ..
             } => {
                 let mut value = self.type_expr(value, span.clone(), false);
                 let ty = match ty {
@@ -179,6 +180,12 @@ impl<'a> TypeSystem<'a> {
             parser::Stmt::Annotation(a, stmt) => {
                 ty::Stmt::Annotation(a, Box::new(self.type_stmt(*stmt, must_return_value)))
             }
+            parser::Stmt::If(_) => todo!(),
+            parser::Stmt::Block(statements) => {
+                let (statements, ty) = self.type_block(statements, false);
+                ty::Stmt::Expression(ty::Expr::Block(statements, Default::default()), ty)
+            },
+            parser::Stmt::Break(_) => todo!(),
         };
 
         (stmt, span)

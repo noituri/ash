@@ -80,6 +80,7 @@ impl<'a> Resolver<'a> {
                 name,
                 ty,
                 value: _,
+                ..
             } => {
                 self.declare(name.clone(), *id, ty.clone());
                 self.define(name.clone());
@@ -111,6 +112,7 @@ impl<'a> Resolver<'a> {
                 name,
                 value,
                 ty,
+                ..
             } => {
                 let prev_deps = self.deps.clone();
                 self.deps = Some((*id, name.clone(), Vec::new()));
@@ -177,6 +179,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_expr(expr, span);
                 }
             }
+            Stmt::Block(statements) => self.resolve_statements(statements),
             _ => {}
         }
     }

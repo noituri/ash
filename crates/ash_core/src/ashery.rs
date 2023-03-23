@@ -4,10 +4,11 @@ use crate::core::{AshResult, Context, Source, StringError};
 use crate::ir::IR;
 use crate::lexer::Lexer;
 use crate::parser::parser::Parser;
+use crate::prelude::cash::Compiler;
 use crate::resolver::Resolver;
 use crate::ty::TypeSystem;
 
-pub fn build(source: &Source) -> AshResult<Chunk, String> {
+pub fn build(source: &Source) -> AshResult<(), String> {
     let lexer = Lexer::new();
     let tokens = lexer.scan(source.inner()).string_err()?;
     let parser = Parser::new();
@@ -18,8 +19,8 @@ pub fn build(source: &Source) -> AshResult<Chunk, String> {
     resolver.run(&ast)?;
     let type_system = TypeSystem::new(&mut context);
     let typed_ast = type_system.run(ast)?;
-    let ir = IR::new(&mut context);
-    let chunk = ir.run(typed_ast);
+    let ir = IR::new(&mut context).run(typed_ast);
+    Compiler::new().run(ir);
 
-    Ok(chunk)
+    Ok(())
 }

@@ -4,13 +4,17 @@ use super::token::Token;
 
 pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
     let arrow = just("=>").to(Token::Arrow);
-    let colon = just("::")
-        .to(Token::DoubleColon)
+    let colon = just(";")
+        .to(Token::SemiColon)
         .or(just(':').to(Token::Colon));
+    
     let equal_equal = just("==").to(Token::DoubleEqual);
     let not_equal = just("!=").to(Token::NotEqual);
     let and_and = just("&&").to(Token::AndAnd);
     let bar_bar = just("||").to(Token::BarBar);
+
+    let gt = just(">=").to(Token::Gte).or(just('>').to(Token::Gt));
+    let lt = just("<=").to(Token::Lte).or(just('<').to(Token::Lt));
 
     let ops = one_of("+-*/%")
         .map_with_span(|c, _span| match c {
@@ -43,6 +47,8 @@ pub(super) fn basic_lexer() -> impl Parser<char, Token, Error = Simple<char>> {
         .or(not_equal)
         .or(and_and)
         .or(bar_bar)
+        .or(gt)
+        .or(lt)
         .or(ops)
         .or(other)
 }

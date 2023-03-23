@@ -67,12 +67,9 @@ impl<'a> IR<'a> {
         Self { context }
     }
 
-    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Chunk {
+    pub fn run(mut self, ast: Vec<Spanned<ty::Stmt>>) -> Vec<Spanned<ir::Stmt>> {
         let ast = self.sort_root(ast);
-        let ast = self.desugar_statements(ast);
-        cash::Compiler::new().run(ast.clone());
-        let compiler = Compiler::new(self.context);
-        compiler.run(ast)
+        self.desugar_statements(ast)
     }
 
     // TODO: Figure out better way of doing this

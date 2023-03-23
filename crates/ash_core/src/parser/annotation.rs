@@ -15,7 +15,6 @@ pub(super) fn annotation_parser<'a>(
 ) -> impl Parser<Token, Spanned<Stmt>, Error = Simple<Token>> + 'a {
     just(Token::At)
         .ignore_then(ident_parser().delimited_by(just(Token::LBracket), just(Token::RBracket)))
-        .then_ignore(just(Token::NewLine).or_not())
         .map_with_span(|name, span| (name, span))
         .then(function_parser(stmt).or(function_proto_parser())) // Support only for functions for now
         .map_with_span(|((name, name_span), stmt), span| {
