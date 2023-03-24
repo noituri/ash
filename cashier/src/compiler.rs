@@ -2,16 +2,23 @@ use std::{collections::HashMap, ffi::c_char, fmt};
 
 use ash_core::prelude::*;
 use llvm_sys::{
+    analysis::{LLVMVerifierFailureAction, LLVMVerifyFunction},
     core::{
         LLVMAddFunction, LLVMAppendBasicBlockInContext, LLVMBuildAdd, LLVMBuildAlloca,
-        LLVMBuildFAdd, LLVMBuildFMul, LLVMBuildFSub, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet,
-        LLVMBuildRetVoid, LLVMBuildStore, LLVMBuildSub, LLVMConstReal, LLVMDoubleTypeInContext,
-        LLVMFloatTypeInContext, LLVMFunctionType, LLVMGetParam, LLVMGetTypeKind,
-        LLVMInt1TypeInContext, LLVMInt32TypeInContext, LLVMPositionBuilderAtEnd, LLVMSetValueName2,
-        LLVMTypeOf, LLVMVoidTypeInContext, LLVMBuildCall2, LLVMGetReturnType, LLVMGetNamedFunction, LLVMConstNull, LLVMGetElementType, LLVMDumpValue, LLVMDumpType, LLVMIsAFunction, LLVMConstInt, LLVMConstStringInContext, LLVMPointerType, LLVMInt8TypeInContext, LLVMBuildGlobalStringPtr, LLVMRunFunctionPassManager,
+        LLVMBuildCall2, LLVMBuildFAdd, LLVMBuildFMul, LLVMBuildFSub, LLVMBuildGlobalStringPtr,
+        LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildStore, LLVMBuildSub,
+        LLVMConstInt, LLVMConstNull, LLVMConstReal, LLVMConstStringInContext,
+        LLVMDoubleTypeInContext, LLVMDumpType, LLVMDumpValue, LLVMFloatTypeInContext,
+        LLVMFunctionType, LLVMGetElementType, LLVMGetNamedFunction, LLVMGetParam,
+        LLVMGetReturnType, LLVMGetTypeKind, LLVMInt1TypeInContext, LLVMInt32TypeInContext,
+        LLVMInt8TypeInContext, LLVMIsAFunction, LLVMPointerType, LLVMPositionBuilderAtEnd,
+        LLVMRunFunctionPassManager, LLVMSetValueName2, LLVMTypeOf, LLVMVoidTypeInContext,
     },
-    prelude::{LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMTypeRef, LLVMValueRef, LLVMPassManagerRef},
-    LLVMTypeKind, analysis::{LLVMVerifyFunction, LLVMVerifierFailureAction},
+    prelude::{
+        LLVMBuilderRef, LLVMContextRef, LLVMModuleRef, LLVMPassManagerRef, LLVMTypeRef,
+        LLVMValueRef,
+    },
+    LLVMTypeKind,
 };
 
 use crate::scope::Scope;
@@ -116,7 +123,8 @@ impl<'a> Compiler<'a> {
             let fun_ty = LLVMFunctionType(fun_ty, param_types.as_mut_ptr(), params_len as u32, 0);
             let fun = LLVMAddFunction(self.module, name.llvm_str(), fun_ty);
             if body_len != 0 {
-                let block = LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr(b"entry\0").llvm_str());
+                let block =
+                    LLVMAppendBasicBlockInContext(self.ctx, fun, RawStr(b"entry\0").llvm_str());
                 LLVMPositionBuilderAtEnd(self.builder, block);
             }
 
@@ -128,7 +136,7 @@ impl<'a> Compiler<'a> {
                 if body_len != 0 {
                     let ty = param_types[i];
                     let alloca = LLVMBuildAlloca(self.builder, ty, name.llvm_str());
-    
+
                     LLVMBuildStore(self.builder, param, alloca);
                     self.scope.set_var(name.as_str(), (alloca, ty));
                 }
@@ -145,7 +153,7 @@ impl<'a> Compiler<'a> {
             self.compile_inst(stmt);
         }
         self.scope.leave();
-        
+
         unsafe {
             LLVMVerifyFunction(fun, LLVMVerifierFailureAction::LLVMAbortProcessAction);
             LLVMRunFunctionPassManager(self.fpm, fun);
@@ -157,11 +165,13 @@ impl<'a> Compiler<'a> {
     fn compile_call(&mut self, arg_len: usize) -> LLVMValueRef {
         let callee = self.read_inst().unwrap();
         let callee = self.compile_inst(callee);
-        let mut args = (0..arg_len).map(|_| {
-            let inst = self.read_inst().expect("expected arg");
-            self.compile_inst(inst)
-        }).collect::<Vec<_>>();
-        
+        let mut args = (0..arg_len)
+            .map(|_| {
+                let inst = self.read_inst().expect("expected arg");
+                self.compile_inst(inst)
+            })
+            .collect::<Vec<_>>();
+
         unsafe {
             LLVMBuildCall2(
                 self.builder,
@@ -172,12 +182,12 @@ impl<'a> Compiler<'a> {
                 RawStr::null().llvm_str(),
             )
         }
-     }
+    }
 
     fn compile_i32(&mut self, v: i32) -> LLVMValueRef {
         unsafe { LLVMConstInt(LLVMInt32TypeInContext(self.ctx), v as u64, 1) }
     }
-    
+
     fn compile_f64(&mut self, v: f64) -> LLVMValueRef {
         unsafe { LLVMConstReal(LLVMDoubleTypeInContext(self.ctx), v) }
     }
@@ -185,7 +195,7 @@ impl<'a> Compiler<'a> {
     fn compile_string(&mut self) -> LLVMValueRef {
         let v = self.read_string();
         unsafe {
-            // TODO: Use String struct 
+            // TODO: Use String struct
             LLVMBuildGlobalStringPtr(self.builder, v.llvm_str(), RawStr(b"strtmp\0").llvm_str())
         }
     }

@@ -20,3 +20,7 @@ Cargo.lock
 
 # Compiler cache
 *.cash
+
+# Other
+*.o
+*.exe
