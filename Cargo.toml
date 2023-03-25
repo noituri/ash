@@ -16,3 +16,4 @@ argh = "0.1"
 ariadne = "0.1"
 anyhow = "1.0"
 ash_vm = { path = "./crates/ash_vm", optional = true }
+cashier = { path = "./cashier" }

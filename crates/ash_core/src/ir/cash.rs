@@ -11,7 +11,7 @@ use crate::{
 
 use super::{ir, Expr, Stmt};
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Header {
     pub version: (u8, u8, u8),
     pub instructions: Vec<Inst>,
@@ -64,7 +64,7 @@ pub enum Inst {
 }
 
 // TODO: Enforce 4 bytes
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Extra {
     Type(Ty),
 }
@@ -78,16 +78,18 @@ pub enum Ty {
     Void,
 }
 
-pub(crate) struct Compiler {
+pub(crate) struct Compiler<'a> {
+    location: &'a str,
     header: Header,
 }
 
-impl Compiler {
-    pub fn new() -> Self {
+impl<'a> Compiler<'a> {
+    pub fn new(location: &'a str) -> Self {
         assert_eq!(std::mem::size_of::<Inst>(), 16);
         // assert_eq!(std::mem::size_of::<Data>(), 4);
 
         Self {
+            location,
             header: Header::new((0, 1, 0)),
         }
     }
@@ -98,8 +100,9 @@ impl Compiler {
     }
 
     fn create_file(&self) {
+        dbg!(&self.header);
         let bytes = bincode::serialize(&self.header).unwrap();
-        let mut f = File::create("test.cash").unwrap();
+        let mut f = File::create(format!("{}.cash", self.location)).unwrap();
         f.write_all(&bytes).unwrap();
     }
 

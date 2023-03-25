@@ -212,8 +212,8 @@ impl<'a> Compiler<'a> {
 
     fn compile_bin_op(&mut self, op: cash::Inst) -> LLVMValueRef {
         let lh = self.read_inst().expect("expected left operand");
-        let rh = self.read_inst().expect("expected right operand");
         let lh = self.compile_inst(lh);
+        let rh = self.read_inst().expect("expected right operand");
         let rh = self.compile_inst(rh);
 
         let bin_op = |fi: BinOpFn, ff: BinOpFn| unsafe {

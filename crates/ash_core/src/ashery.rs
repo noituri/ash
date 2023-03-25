@@ -20,7 +20,7 @@ pub fn build(source: &Source) -> AshResult<(), String> {
     let type_system = TypeSystem::new(&mut context);
     let typed_ast = type_system.run(ast)?;
     let ir = IR::new(&mut context).run(typed_ast);
-    Compiler::new().run(ir);
+    Compiler::new(source.location().trim_end_matches(".ash")).run(ir);
 
     Ok(())
 }
