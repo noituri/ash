@@ -100,7 +100,6 @@ impl<'a> Compiler<'a> {
     }
 
     fn create_file(&self) {
-        dbg!(&self.header);
         let bytes = bincode::serialize(&self.header).unwrap();
         let mut f = File::create(format!("{}.cash", self.location)).unwrap();
         f.write_all(&bytes).unwrap();
